@@ -77,7 +77,9 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:rgba(10,6,0,
 
 /* ── PAGE ── */
 .page{display:none;padding:2rem;max-width:700px;margin:0 auto;}
-.page.glass{background:rgba(10,6,0,0.65);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,216,77,0.12);border-radius:12px;margin:1.5rem auto;padding:2rem;}
+.page.glass{background:rgba(10,6,0,0.65);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,216,77,0.12);border-radius:12px;margin:1.5rem auto;padding:2rem;position:relative;}
+.page-close-btn{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,216,77,0.2);color:rgba(255,216,77,0.6);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;line-height:1;}
+.page-close-btn:hover{background:rgba(192,80,96,0.2);border-color:var(--red);color:var(--red);}
 .page.active{display:block;}
 
 /* ── SECTION HEADER ── */
@@ -130,7 +132,7 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:rgba(10,6,0,
 .btn-sm.info{border-color:rgba(74,128,192,0.4);color:var(--blue);}
 
 /* ── TABLE ── */
-.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:6px;}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:6px;} .table-wrap::-webkit-scrollbar{height:4px;} .table-wrap::-webkit-scrollbar-thumb{background:rgba(255,216,77,0.3);border-radius:2px;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 th{padding:10px 12px;text-align:left;font-family:'Space Grotesk',sans-serif;font-size:10px;letter-spacing:1px;color:var(--muted);font-weight:600;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--card);white-space:nowrap;}
 td{padding:9px 12px;border-bottom:1px solid rgba(30,18,0,0.6);vertical-align:middle;}
@@ -334,6 +336,13 @@ tr:hover td{background:rgba(200,150,0,0.06);}
   .nav-btn{font-size:9px;padding:12px 4px;}
   /* Admin table scroll */
   .tbl-wrap{font-size:11px;}
+  .tbl-wrap table,.table-wrap table{min-width:600px;}
+  .team-cards-grid{grid-template-columns:1fr!important;}
+  .stats{grid-template-columns:repeat(3,1fr)!important;}
+  .auc-tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .admin-tools{flex-wrap:wrap;}
+  .sec-title{font-size:10px!important;}
+  th,td{padding:7px 8px!important;font-size:11px!important;}
   /* Modal full width */
   .modal{width:95%!important;max-width:95%!important;}
   /* Config bar stack */
@@ -394,6 +403,7 @@ tr:hover td{background:rgba(200,150,0,0.06);}
 
   <!-- ── REGISTRATION PAGE ── -->
   <div id="page-reg" class="page glass active">
+    <button class="page-close-btn" onclick="closePage()" title="Close">&#10005;</button>
     <div class="sec-hdr">
       <div class="sec-dot"></div>
       <div class="sec-title">Register to Play</div>
@@ -516,6 +526,7 @@ tr:hover td{background:rgba(200,150,0,0.06);}
 
   <!-- ── AUCTION PAGE ── -->
   <div id="page-auction" class="page glass">
+    <button class="page-close-btn" onclick="closePage()" title="Close">&#10005;</button>
     <div id="auction-setup-warn" style="display:none;">
       <div class="setup-warn">
         <h3>Setup Required</h3>
@@ -602,7 +613,7 @@ tr:hover td{background:rgba(200,150,0,0.06);}
 
     <!-- ── SUB-TAB: TEAMS ── -->
     <div id="adm-pane-teams" style="display:none;">
-      <div id="teams-wrap" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:1rem;"></div>
+      <div id="teams-wrap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:1rem;"></div>
       <div style="background:rgba(10,6,0,0.6);backdrop-filter:blur(8px);border:1px solid rgba(255,216,77,0.12);border-radius:6px;padding:1.25rem;margin-bottom:1.5rem;">
         <div style="font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:1rem;font-weight:600;">Create Team</div>
         <div class="field" style="margin-bottom:0;">
@@ -2243,6 +2254,10 @@ function toast(msg,type=''){
 }
 
 /* init — no auto-load needed, Supabase connects on demand */
+function closePage(){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn-3d').forEach(b=>b.classList.remove('active'));
+}
 </script>
 </body>
 </html>
