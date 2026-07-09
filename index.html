@@ -264,6 +264,8 @@ tr:hover td{background:rgba(200,150,0,0.06);}
 .reg-tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem;}
 .reg-tab{flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;font-weight:500;}
 .reg-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.field-error input,.field-error select{border-bottom:1px solid var(--red)!important;}
+.field-error label{color:var(--red)!important;}
 .player-thumb{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--border2);background:var(--card);}
 .player-thumb-placeholder{width:34px;height:34px;border-radius:50%;border:1px solid var(--border2);background:rgba(200,150,0,0.1);display:inline-flex;align-items:center;justify-content:center;color:var(--amber);font-size:11px;font-weight:600;font-family:'Space Grotesk',sans-serif;flex-shrink:0;}
 .auc-tab-bar{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem;}
@@ -692,17 +694,29 @@ tr:hover td{background:rgba(200,150,0,0.06);}
   <div class="modal">
     <h3>&#9830; Add Player</h3>
     <div class="grid" style="margin-bottom:0;">
-      <div class="field"><label>Full Name *</label><input id="mq-name" type="text" placeholder="e.g. Ravi Kumar"/></div>
-      <div class="field"><label>Flat / Unit No.</label><input id="mq-flat" type="text" placeholder="B-204"/></div>
-      <div class="field"><label>Mobile</label><input id="mq-mobile" type="tel" placeholder="+91 98765 43210"/></div>
-      <div class="field"><label>Gender *</label>
-        <select id="mq-gender">
+      <div class="field">
+        <label>Full Name *</label>
+        <input id="mq-name" type="text" placeholder="e.g. Ravi Kumar" oninput="validateAddPlayerForm()"/>
+      </div>
+      <div class="field">
+        <label>Flat / Unit No. *</label>
+        <input id="mq-flat" type="text" placeholder="B-204" oninput="validateAddPlayerForm()"/>
+      </div>
+      <div class="field">
+        <label>Mobile Number *</label>
+        <input id="mq-mobile" type="tel" placeholder="9876543210" maxlength="10"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'');validateAddPlayerForm()"/>
+      </div>
+      <div class="field">
+        <label>Gender *</label>
+        <select id="mq-gender" onchange="validateAddPlayerForm()">
           <option value="">— Select —</option>
           <option>Male</option><option>Female</option>
         </select>
       </div>
-      <div class="field"><label>Proficiency Level *</label>
-        <select id="mq-level">
+      <div class="field">
+        <label>Proficiency Level *</label>
+        <select id="mq-level" onchange="validateAddPlayerForm()">
           <option value="">— Select —</option>
           <option value="Advanced">Advanced</option>
           <option value="Intermediate+">Intermediate+</option>
@@ -712,7 +726,7 @@ tr:hover td{background:rgba(200,150,0,0.06);}
       </div>
       <div class="field">
         <label>Is Marquee Player? *</label>
-        <select id="mq-is-marquee" onchange="toggleMqTeam(this.value)">
+        <select id="mq-is-marquee" onchange="toggleMqTeam(this.value);validateAddPlayerForm()">
           <option value="">— Select —</option>
           <option value="no">No — Regular Player</option>
           <option value="yes">Yes — Marquee Player</option>
@@ -721,7 +735,9 @@ tr:hover td{background:rgba(200,150,0,0.06);}
     </div>
     <div class="modal-btns">
       <button class="cancel" onclick="closeModal('add-marquee-modal')">Cancel</button>
-      <button class="confirm" style="background:rgba(255,216,77,0.15);border-color:rgba(255,216,77,0.4);color:var(--gold);" onclick="saveMarqueePlayer()">Add Player</button>
+      <button class="confirm" id="add-player-btn" disabled
+        style="background:rgba(100,100,100,0.15);border-color:rgba(100,100,100,0.3);color:var(--muted);cursor:not-allowed;"
+        onclick="saveMarqueePlayer()">Add Player</button>
     </div>
   </div>
 </div>
@@ -1491,11 +1507,59 @@ async function openAddMarqueeModal(){
   document.getElementById('mq-gender').value='';
   document.getElementById('mq-level').value='';
   document.getElementById('mq-is-marquee').value='';
+  // Reset field error states and button
+  document.querySelectorAll('#add-marquee-modal .field').forEach(f=>f.classList.remove('field-error'));
+  const btn = document.getElementById('add-player-btn');
+  if(btn){
+    btn.disabled=true;
+    btn.style.background='rgba(100,100,100,0.15)';
+    btn.style.borderColor='rgba(100,100,100,0.3)';
+    btn.style.color='var(--muted)';
+    btn.style.cursor='not-allowed';
+  }
   document.getElementById('add-marquee-modal').classList.add('show');
 }
 
 function toggleMqTeam(val){
   // Team assignment removed from Add Player modal per design
+}
+
+function validateAddPlayerForm(){
+  const fields = [
+    {id:'mq-name',    check: v => v.trim().length >= 1},
+    {id:'mq-flat',    check: v => v.trim().length >= 1},
+    {id:'mq-mobile',  check: v => /^\d{10}$/.test(v.trim())},
+    {id:'mq-gender',  check: v => v !== ''},
+    {id:'mq-level',   check: v => v !== ''},
+    {id:'mq-is-marquee', check: v => v !== ''},
+  ];
+  let allValid = true;
+  fields.forEach(f=>{
+    const el = document.getElementById(f.id);
+    if(!el) return;
+    const val = el.value;
+    const valid = f.check(val);
+    const fieldEl = el.closest('.field');
+    if(fieldEl){
+      fieldEl.classList.toggle('field-error', !valid);
+    }
+    if(!valid) allValid = false;
+  });
+  const btn = document.getElementById('add-player-btn');
+  if(btn){
+    btn.disabled = !allValid;
+    if(allValid){
+      btn.style.background = 'rgba(255,216,77,0.15)';
+      btn.style.borderColor = 'rgba(255,216,77,0.4)';
+      btn.style.color = 'var(--gold)';
+      btn.style.cursor = 'pointer';
+    } else {
+      btn.style.background = 'rgba(100,100,100,0.15)';
+      btn.style.borderColor = 'rgba(100,100,100,0.3)';
+      btn.style.color = 'var(--muted)';
+      btn.style.cursor = 'not-allowed';
+    }
+  }
 }
 
 async function saveMarqueePlayer(){
