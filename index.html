@@ -314,16 +314,32 @@ tr:hover td{background:rgba(200,150,0,0.06);}
 @media(max-width:680px){.auc-teams-grid{grid-template-columns:1fr;}.pre-auc-grid{grid-template-columns:1fr 1fr;}}
 
 @media(max-width:680px){
-  .lp-t1{font-size:36px;}
-  .lp-t2{font-size:15px;}
-  .b-t1{font-size:32px;}
-  .b-t2{font-size:22px;}
+  /* Landing title — shrink to fit one line */
+  #page-landing .lp-title-line{font-size:22px!important;letter-spacing:2px!important;white-space:normal!important;text-align:center;}
+  /* Nav 3D buttons — smaller on mobile */
+  .nav-btn-3d{padding:7px 14px!important;font-size:10px!important;letter-spacing:0.5px!important;}
+  /* Glass page — full width, smaller padding */
+  .page.glass{margin:0.75rem!important;padding:1.25rem!important;border-radius:8px!important;}
+  /* Form grid — single column */
   .grid{grid-template-columns:1fr;}
+  /* Stats — 2 columns */
   .stats{grid-template-columns:repeat(2,1fr);}
+  /* Old banner */
   .banner{height:260px;}
+  .b-t1{font-size:22px;}
+  .b-t2{font-size:16px;}
+  /* Auction */
   .auction-layout{grid-template-columns:1fr;}
   .pool-grid{grid-template-columns:1fr;}
   .nav-btn{font-size:9px;padding:12px 4px;}
+  /* Admin table scroll */
+  .tbl-wrap{font-size:11px;}
+  /* Modal full width */
+  .modal{width:95%!important;max-width:95%!important;}
+  /* Config bar stack */
+  .config-bar{flex-direction:column!important;align-items:stretch!important;}
+  /* Header strip */
+  #page-landing>div:first-of-type{padding:12px 16px 10px!important;}
 }
 </style>
 </head>
@@ -336,7 +352,7 @@ tr:hover td{background:rgba(200,150,0,0.06);}
   <!-- Header text strip -->
   <div style="position:relative;z-index:2;text-align:center;padding:20px 24px 16px;background:rgba(10,6,0,0.5);border-bottom:1px solid rgba(255,216,77,0.15);flex-shrink:0;">
     <div class="lp-kn">ಕರ್ನಾಟಕ ರಾಜ್ಯೋತ್ಸವ</div>
-    <div style="font-family:'Cinzel',serif;font-weight:900;font-size:38px;color:var(--gold);letter-spacing:4px;line-height:1;text-shadow:0 2px 20px rgba(0,0,0,0.9);white-space:nowrap;">DE RAJYOTSAVA CUP 2026</div>
+    <div class="lp-title-line" style="font-family:'Cinzel',serif;font-weight:900;font-size:38px;color:var(--gold);letter-spacing:4px;line-height:1.1;text-shadow:0 2px 20px rgba(0,0,0,0.9);white-space:nowrap;">DE RAJYOTSAVA CUP 2026</div>
   </div>
   <!-- 3D nav buttons on landing -->
   <div style="position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(10,6,0,0.42);border-bottom:1px solid rgba(255,216,77,0.12);height:52px;backdrop-filter:blur(4px);flex-shrink:0;">
