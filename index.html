@@ -1479,9 +1479,6 @@ function closeModal(id){document.getElementById(id).classList.remove('show');}
 // ── ADD MARQUEE PLAYER ──
 async function openAddMarqueeModal(){
   if(!requireConn()) return;
-  const ps = await getP();
-  const mrqCt = ps.filter(p=>p.isMarquee).length;
-  if(mrqCt>=MAX_MRQ){toast('Maximum 3 marquee players already tagged','error');return;}
   document.getElementById('mq-name').value='';
   document.getElementById('mq-flat').value='';
   document.getElementById('mq-mobile').value='';
