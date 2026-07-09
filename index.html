@@ -1123,7 +1123,13 @@ async function submitReg(e){
     toast('🏸 Registered! Welcome, '+name+'!','success');
     document.getElementById('reg-form').reset();
     document.getElementById('photo-preview-wrap').innerHTML='<span id="photo-placeholder-icon">&#128247;</span>';
-  } catch(err){ toast('Registration failed: '+err.message,'error'); }
+  } catch(err){
+    if(err.message && err.message.includes('players_mobile_key')){
+      toast('This mobile number is already registered!','error');
+    } else {
+      toast('Registration failed: '+err.message,'error');
+    }
+  }
   btn.disabled=false; btn.textContent='Register for the Tournament';
 }
 
@@ -1513,14 +1519,20 @@ async function saveMarqueePlayer(){
   try{
     await sbInsert('players',{
       id:'player_'+Date.now(),
-      name, flat:flat||'', mobile:mobile||'', gender, level,
+      name, flat:flat||'', mobile:mobile||null, gender, level,
       is_owner:false, is_marquee:isMarquee, is_foreign:false,
       base_pts:null, photo_url:null
     });
     closeModal('add-marquee-modal');
     toast(name+' added as '+(isMarquee?'Marquee Player':'regular player')+'!','success');
     await renderAdminTable(); await updateStats(); await refreshMarqueeFormSelect(); await renderTeams();
-  } catch(e){ toast('Error: '+e.message,'error'); }
+  } catch(e){
+    if(e.message && e.message.includes('players_mobile_key')){
+      toast('This mobile number is already registered!','error');
+    } else {
+      toast('Error: '+e.message,'error');
+    }
+  }
 }
 
 // Temp storage for pending team add
@@ -1564,7 +1576,7 @@ async function ownerIsPlayer(isPlayer){
       // Insert player record with is_owner = true
       await sbInsert('players',{
         id:'player_'+Date.now(),
-        name:ownerName, flat:'', mobile:'', gender:'Male', level:'Advanced',
+        name:ownerName, flat:'', mobile:null, gender:'Male', level:'Advanced',
         is_owner:true, is_marquee:false, is_foreign:false,
         is_kid:false, age:null, base_pts:null, photo_url:null
       });
