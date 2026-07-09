@@ -1093,14 +1093,14 @@ async function submitReg(e){
   const playerId  = Date.now().toString();
 
   // Validations
-  if(!name){ toast('Enter your full name','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
-  if(!validateName(name)){ toast('Name must be at least 3 characters, letters only','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
-  if(!flat){ toast('Enter your flat number','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
-  if(!mobile){ toast('Enter your mobile number','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
-  if(!validateMobile(mobile)){ toast('Mobile must be exactly 10 digits','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
-  if(!gender){ toast('Select your gender','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
-  if(!level){ toast('Select your proficiency level','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
-  if(!foreign){ toast('Select foreign player status','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+  if(!name){ toast('Full name is required','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+  if(!validateName(name)){ toast('Name must be at least 3 characters and contain letters only','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+  if(!flat){ toast('Flat / Unit number is required','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+  if(!mobile){ toast('Mobile number is required','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+  if(!validateMobile(mobile)){ toast('Mobile number must be exactly 10 digits (numbers only)','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+  if(!gender){ toast('Please select your gender','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+  if(!level){ toast('Please select your proficiency level','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+  if(!foreign){ toast('Please select if you are a foreign player or not','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
 
   try {
     const existing = await sbGet('players',`select=id&mobile=eq.${encodeURIComponent(mobile)}`);
@@ -1162,17 +1162,17 @@ async function submitKidReg(e){
   const playerId  = 'kid_'+Date.now().toString();
 
   // Validations
-  if(!name){ toast('Enter the kid full name','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
-  if(!validateName(name)){ toast('Name must be at least 3 characters, letters only','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
-  if(!flat){ toast('Enter flat number','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
-  if(!ageVal){ toast('Enter age','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(!name){ toast('Kid full name is required','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(!validateName(name)){ toast('Name must be at least 3 characters and contain letters only','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(!flat){ toast('Flat / Unit number is required','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(!ageVal){ toast('Age is required','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
   const age = parseInt(ageVal);
-  if(isNaN(age)||age<1||age>15){ toast('Age must be between 1 and 15 for kids category (under 16)','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
-  if(!gender){ toast('Select gender','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
-  if(!mobile){ toast('Enter parent mobile number','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
-  if(!validateMobile(mobile)){ toast('Parent mobile must be 10 digits','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
-  if(!level){ toast('Select proficiency level','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
-  if(!foreign){ toast('Select foreign player status','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(isNaN(age)||age<1||age>15){ toast('Age must be between 1 and 15 for the Kids category (under 16)','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(!gender){ toast('Please select gender','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(!mobile){ toast('Parent mobile number is required','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(!validateMobile(mobile)){ toast('Parent mobile number must be exactly 10 digits (numbers only)','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(!level){ toast('Please select proficiency level','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(!foreign){ toast('Please select if the kid is a foreign player or not','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
 
   try{
     const existing = await sbGet('players',`select=id&mobile=eq.${encodeURIComponent(mobile)}&name=eq.${encodeURIComponent(name)}`);
@@ -1295,7 +1295,7 @@ async function updateStats(){
 async function savePts(id){
   if(!requireConn()) return;
   const v=document.getElementById('pts-'+id)?.value;
-  if(v===''||v==null){toast('Enter a base price','error');return;}
+  if(v===''||v==null){toast('Please enter a base price value','error');return;}
   const n=parseInt(v); if(isNaN(n)||n<0){toast('Invalid price','error');return;}
   try{
     await savePlayerField(id,{base_pts:n});
@@ -1319,7 +1319,7 @@ async function setDefPts(id){
 async function saveFinalPts(id){
   if(!requireConn()) return;
   const v=document.getElementById('fpts-'+id)?.value;
-  if(v===''||v==null){toast('Enter final points','error');return;}
+  if(v===''||v==null){toast('Please enter the final auction points','error');return;}
   const n=parseInt(v); if(isNaN(n)||n<0){toast('Invalid points','error');return;}
   try{
     await savePlayerField(id,{final_pts:n});
@@ -1343,7 +1343,7 @@ async function toggleOwner(id){
   const ps  = await getP();
   const p   = ps.find(x=>x.id===id); if(!p) return;
   const cnt = ps.filter(x=>x.isOwner).length;
-  if(!p.isOwner&&cnt>=MAX_OWN){toast('Max 3 owners allowed','error');return;}
+  if(!p.isOwner&&cnt>=MAX_OWN){toast('Maximum 3 owners are allowed. Remove an existing owner first.','error');return;}
   try{
     await savePlayerField(id,{is_owner:!p.isOwner});
     toast((!p.isOwner?p.name+' set as Owner ★':p.name+' removed as Owner'));
@@ -1356,7 +1356,7 @@ async function toggleMarquee(id){
   const ps  = await getP();
   const p   = ps.find(x=>x.id===id); if(!p) return;
   const cnt = ps.filter(x=>x.isMarquee).length;
-  if(!p.isMarquee&&cnt>=MAX_MRQ){toast('Max 3 marquee players','error');return;}
+  if(!p.isMarquee&&cnt>=MAX_MRQ){toast('Maximum 3 marquee players are allowed. Remove an existing marquee first.','error');return;}
   try{
     await savePlayerField(id,{is_marquee:!p.isMarquee});
     toast((!p.isMarquee?p.name+' set as Marquee ♦':p.name+' removed as Marquee'));
@@ -1506,15 +1506,15 @@ async function saveMarqueePlayer(){
   const gender    = document.getElementById('mq-gender').value;
   const level     = document.getElementById('mq-level').value;
   const mqVal = document.getElementById('mq-is-marquee').value;
-  if(!mqVal){toast('Select if player is Marquee or not','error');return;}
+  if(!mqVal){toast('Please select if this player is a Marquee player or not','error');return;}
   const isMarquee = mqVal === 'yes';
-  if(!name){toast('Enter a name','error');return;}
-  if(!gender){toast('Select gender','error');return;}
-  if(!level){toast('Select proficiency level','error');return;}
+  if(!name){toast('Player name is required','error');return;}
+  if(!gender){toast('Please select gender','error');return;}
+  if(!level){toast('Please select proficiency level','error');return;}
   if(isMarquee){
     const ps = await getP();
     const mrqCt = ps.filter(p=>p.isMarquee).length;
-    if(mrqCt>=MAX_MRQ){toast('Maximum 3 marquee players already tagged','error');return;}
+    if(mrqCt>=MAX_MRQ){toast('Maximum 3 marquee players already tagged. Remove one first.','error');return;}
   }
   try{
     await sbInsert('players',{
@@ -1541,10 +1541,10 @@ let _pendingTeam = null;
 async function addTeam(){
   if(!requireConn()) return;
   const name = document.getElementById('t-name').value.trim();
-  if(!name){toast('Enter a team name','error');return;}
+  if(!name){toast('Team name is required','error');return;}
   const teams = await getTeams();
-  if(teams.length>=3){toast('Maximum 3 teams allowed','error');return;}
-  if(teams.find(t=>t.name.toLowerCase()===name.toLowerCase())){toast('Team name already exists','error');return;}
+  if(teams.length>=3){toast('Maximum 3 teams are allowed','error');return;}
+  if(teams.find(t=>t.name.toLowerCase()===name.toLowerCase())){toast('A team with this name already exists','error');return;}
   try{
     await sbInsert('teams',{
       id:'team_'+Date.now(), name, owner_name:'',
@@ -1567,7 +1567,7 @@ async function ownerIsPlayer(isPlayer){
       const ps = await getP();
       const ownCt = ps.filter(p=>p.isOwner).length;
       if(ownCt >= MAX_OWN){
-        toast('Max 3 owners reached — '+ownerName+' not added as player.','error');
+        toast('Maximum 3 owners already exist. '+ownerName+' was not added as a player.','error');
         await renderTeams(); return;
       }
       // Check duplicate name
@@ -1615,7 +1615,7 @@ async function saveTeamDetails(){
   const teamId    = document.getElementById('tdm-team-id').value;
   const ownerName = document.getElementById('tdm-owner').value.trim();
   const marqueeId = document.getElementById('tdm-marquee').value||null;
-  if(!ownerName){toast('Enter an owner name','error');return;}
+  if(!ownerName){toast('Owner name is required','error');return;}
   try{
     // Update team with owner and marquee
     await sbUpdate('teams',{owner_name:ownerName, marquee_id:marqueeId},`id=eq.${teamId}`);
@@ -1722,7 +1722,7 @@ async function addBpRule(){
   const priceVal= document.getElementById('bp-price').value.trim();
   if(!level){toast('Select a proficiency level','error');return;}
   if(!foreign){toast('Select foreign player status','error');return;}
-  if(!priceVal){toast('Enter a base price','error');return;}
+  if(!priceVal){toast('Please enter a base price value','error');return;}
   const price = parseInt(priceVal);
   if(isNaN(price)||price<0){toast('Invalid price','error');return;}
   const rules = await getBpRules();
