@@ -135,21 +135,21 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:rgba(10,6,0,
 .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:6px;} .table-wrap::-webkit-scrollbar{height:4px;} .table-wrap::-webkit-scrollbar-thumb{background:rgba(255,216,77,0.3);border-radius:2px;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 th{padding:10px 12px;text-align:left;font-family:'Space Grotesk',sans-serif;font-size:10px;letter-spacing:1px;color:var(--muted);font-weight:600;text-transform:uppercase;border-bottom:1px solid var(--border);background:var(--card);white-space:nowrap;}
-td{padding:9px 12px;border-bottom:1px solid rgba(30,18,0,0.6);vertical-align:middle;}
+td{padding:9px 12px;border-bottom:1px solid rgba(30,18,0,0.6);vertical-align:middle;background:rgba(8,5,1,0.72);}
 tr:last-child td{border-bottom:none;}
-tr:hover td{background:rgba(200,150,0,0.06);}
-.empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;letter-spacing:1px;}
+tr:hover td{background:rgba(200,150,0,0.1);}
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:13px;letter-spacing:1px;background:rgba(8,5,1,0.72);}
 
 /* ── TAGS ── */
-.tag{display:inline-block;padding:2px 8px;border-radius:2px;font-size:10px;letter-spacing:1px;white-space:nowrap;}
-.tag.adv{background:rgba(255,216,77,0.15);color:var(--gold);border:1px solid rgba(255,216,77,0.3);font-weight:600;}
-.tag.intp{background:rgba(100,200,255,0.14);color:#64c8ff;border:1px solid rgba(100,200,255,0.32);font-weight:600;}
-.tag.int{background:rgba(60,210,130,0.14);color:#3cd282;border:1px solid rgba(60,210,130,0.32);font-weight:600;}
-.tag.beg{background:rgba(220,130,255,0.14);color:#dc82ff;border:1px solid rgba(220,130,255,0.32);font-weight:600;}
-.tag.male{background:rgba(50,120,200,0.1);color:#6699cc;}
-.tag.female{background:rgba(200,80,120,0.1);color:#cc6688;}
-.tag.owner{background:rgba(245,194,0,0.18);color:var(--gold);border:1px solid rgba(245,194,0,0.3);}
-.tag.marquee{background:rgba(180,60,180,0.15);color:#cc88dd;border:1px solid rgba(180,60,180,0.3);}
+.tag{display:inline-block;padding:3px 10px;border-radius:3px;font-size:11px;letter-spacing:1px;white-space:nowrap;}
+.tag.adv{background:rgba(255,216,77,0.22);color:var(--gold);border:1px solid rgba(255,216,77,0.45);font-weight:700;}
+.tag.intp{background:rgba(100,200,255,0.2);color:#8ad4ff;border:1px solid rgba(100,200,255,0.45);font-weight:700;}
+.tag.int{background:rgba(60,210,130,0.2);color:#5cdf9a;border:1px solid rgba(60,210,130,0.45);font-weight:700;}
+.tag.beg{background:rgba(220,130,255,0.2);color:#e29fff;border:1px solid rgba(220,130,255,0.45);font-weight:700;}
+.tag.male{background:rgba(50,120,200,0.16);color:#82b3e8;border:1px solid rgba(50,120,200,0.35);}
+.tag.female{background:rgba(200,80,120,0.16);color:#e096ab;border:1px solid rgba(200,80,120,0.35);}
+.tag.owner{background:rgba(245,194,0,0.24);color:var(--gold);border:1px solid rgba(245,194,0,0.45);font-weight:700;}
+.tag.marquee{background:rgba(180,60,180,0.2);color:#dda3ea;border:1px solid rgba(180,60,180,0.4);}
 
 /* ── ACTION BUTTONS ── */
 .act-btns{display:flex;gap:5px;flex-wrap:wrap;}
@@ -1890,7 +1890,7 @@ async function renderBpRules(){
       <td style="color:var(--muted)">${i+1}</td>
       <td>${lLabel}</td>
       <td>${fLabel}</td>
-      <td style="font-family:'Cinzel',serif;color:var(--gold);font-size:13px;">${r.price} pts</td>
+      <td><span style="display:inline-block;background:rgba(255,216,77,0.16);border:1px solid rgba(255,216,77,0.4);border-radius:4px;padding:4px 12px;font-family:'Cinzel',serif;color:var(--gold);font-size:14px;font-weight:700;letter-spacing:0.5px;">${r.price} pts</span></td>
       <td style="color:var(--muted2);">${affected} player${affected!==1?'s':''}</td>
       <td><button class="act-btn del" onclick="deleteBpRule('${r.id}')">✕ Remove</button></td>
     </tr>`;
