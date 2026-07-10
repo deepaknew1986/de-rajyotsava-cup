@@ -1069,18 +1069,15 @@ function gotoPage(id){
    ADMIN OVERLAY
 ══════════════════════════════════════════════ */
 function openAdminOverlay(){
-  if(sessionStorage.getItem('admin_ok')==='1'){showAdminPage();return;}
   document.getElementById('admin-overlay').classList.add('show');
 }
 function closeAdminOverlay(){document.getElementById('admin-overlay').classList.remove('show');}
 function adminLogin(){
   if(document.getElementById('admin-pw').value===ADMIN_PW){
-    sessionStorage.setItem('admin_ok','1');
     closeAdminOverlay();showAdminPage();toast('Welcome, Admin!','success');
   } else {toast('Wrong password','error');}
 }
 function adminLogout(){
-  sessionStorage.removeItem('admin_ok');
   document.getElementById('admin-pw').value='';
   gotoPage('reg');toast('Logged out.');
 }
