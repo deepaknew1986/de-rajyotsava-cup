@@ -72,9 +72,9 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:rgba(10,6,0,
 .nav-auction{background:rgba(255,255,255,0.05);color:rgba(255,216,77,0.7);border:1px solid rgba(255,216,77,0.2);border-bottom:3px solid rgba(255,216,77,0.35);}
 .nav-auction.active,.nav-auction:hover{background:rgba(255,216,77,0.1);color:var(--gold);border-color:rgba(255,216,77,0.45);}
 .nav-auction:active{transform:translateY(2px);border-bottom-width:1px;}
-.nav-schedule,.nav-gallery{background:rgba(255,255,255,0.05);color:rgba(255,216,77,0.7);border:1px solid rgba(255,216,77,0.2);border-bottom:3px solid rgba(255,216,77,0.35);}
-.nav-schedule.active,.nav-schedule:hover,.nav-gallery.active,.nav-gallery:hover{background:rgba(255,216,77,0.1);color:var(--gold);border-color:rgba(255,216,77,0.45);}
-.nav-schedule:active,.nav-gallery:active{transform:translateY(2px);border-bottom-width:1px;}
+.nav-schedule,.nav-gallery,.nav-teams{background:rgba(255,255,255,0.05);color:rgba(255,216,77,0.7);border:1px solid rgba(255,216,77,0.2);border-bottom:3px solid rgba(255,216,77,0.35);}
+.nav-schedule.active,.nav-schedule:hover,.nav-gallery.active,.nav-gallery:hover,.nav-teams.active,.nav-teams:hover{background:rgba(255,216,77,0.1);color:var(--gold);border-color:rgba(255,216,77,0.45);}
+.nav-schedule:active,.nav-gallery:active,.nav-teams:active{transform:translateY(2px);border-bottom-width:1px;}
 .nav-admin{padding:13px 16px;background:none;border:none;border-left:1px solid var(--border);color:var(--muted);font-size:16px;cursor:pointer;transition:color .2s;}
 .nav-admin:hover{color:var(--amber);}
 
@@ -157,6 +157,26 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 .year-pill{background:transparent;color:var(--muted2);border:1px solid rgba(255,216,77,0.15);border-radius:5px;padding:6px 14px;font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:'Space Grotesk',sans-serif;}
 .year-pill.active{background:rgba(255,216,77,0.15);color:var(--gold);border-color:rgba(255,216,77,0.4);}
 .year-pill .yp-cur{font-size:9px;opacity:0.7;margin-left:3px;}
+
+.pl-list{display:flex;gap:8px;flex-wrap:wrap;max-height:150px;overflow-y:auto;padding:4px 0;}
+.pl-item{display:flex;align-items:center;gap:8px;background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:5px;padding:6px 12px;font-family:'Space Grotesk',sans-serif;font-size:11px;color:var(--muted);cursor:pointer;}
+.pl-item:hover{background:rgba(255,216,77,0.15);}
+.pl-item .pl-name{color:var(--text);font-weight:600;}
+.pl-item .pl-badge{font-size:9px;padding:2px 7px;border-radius:8px;letter-spacing:0.5px;background:rgba(255,216,77,0.15);color:var(--gold);}
+
+.live-bid-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:1.25rem;}
+.team-bid-btn{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.5px;background:rgba(255,216,77,0.08);border:1px solid rgba(255,216,77,0.3);color:var(--gold);padding:12px 22px;border-radius:5px;cursor:pointer;transition:all .15s;}
+.team-bid-btn:hover{background:rgba(255,216,77,0.18);}
+.team-bid-btn.is-leading{background:rgba(60,210,130,0.15);border-color:var(--green);color:var(--green);}
+
+.sold-flash{position:absolute;inset:0;border-radius:12px;background:rgba(60,210,130,0.22);opacity:0;pointer-events:none;}
+.sold-flash.show{animation:soldFlashPulse .9s ease-out;}
+@keyframes soldFlashPulse{0%{opacity:1;}100%{opacity:0;}}
+.sold-banner{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);background:rgba(10,30,15,0.95);border:2px solid var(--green);color:var(--green);font-family:'Cinzel',serif;font-weight:700;font-size:17px;letter-spacing:0.5px;padding:16px 28px;border-radius:10px;opacity:0;transition:opacity .3s;white-space:nowrap;z-index:5;text-align:center;}
+.sold-banner b{color:var(--gold);}
+.sold-banner.show{opacity:1;}
+.live-confetti{position:fixed;top:-20px;width:8px;height:14px;opacity:0.9;pointer-events:none;z-index:999;}
+@keyframes liveConfettiFall{to{transform:translateY(110vh) rotate(540deg);opacity:0;}}
 
 /* ── ACTION BUTTONS ── */
 .act-btns{display:flex;gap:5px;flex-wrap:wrap;}
@@ -374,7 +394,8 @@ tr:hover td{background:rgba(200,150,0,0.1);}
   <div style="position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(10,6,0,0.42);border-bottom:1px solid rgba(255,216,77,0.12);height:52px;backdrop-filter:blur(4px);flex-shrink:0;">
     <div style="display:flex;gap:6px;">
       <button class="nav-btn-3d nav-register" onclick="enterSite();setTimeout(()=>gotoPage('reg'),100)">🏸 Register</button>
-      <button class="nav-btn-3d nav-auction" onclick="enterSite();setTimeout(()=>gotoPage('auction'),100)">🏆 Auction</button>
+      <button class="nav-btn-3d nav-auction" onclick="enterSite();setTimeout(()=>gotoPage('auction'),100)">🏆 Live Auction</button>
+      <button class="nav-btn-3d nav-teams" onclick="enterSite();setTimeout(()=>gotoPage('teams'),100)">🛡 Teams</button>
       <button class="nav-btn-3d nav-schedule" onclick="enterSite();setTimeout(()=>gotoPage('schedule'),100)">📅 Schedule</button>
       <button class="nav-btn-3d nav-gallery" onclick="enterSite();setTimeout(()=>gotoPage('gallery'),100)">🖼 Gallery</button>
     </div>
@@ -405,7 +426,8 @@ tr:hover td{background:rgba(200,150,0,0.1);}
   <div class="nav" style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(10,6,0,0.5);border-bottom:1px solid rgba(255,216,77,0.15);height:52px;backdrop-filter:blur(4px);">
     <div style="display:flex;gap:6px;">
       <button class="nav-btn-3d nav-register active" onclick="gotoPage('reg')">🏸 Register</button>
-      <button class="nav-btn-3d nav-auction" onclick="gotoPage('auction')">🏆 Auction</button>
+      <button class="nav-btn-3d nav-auction" onclick="gotoPage('auction')">🏆 Live Auction</button>
+      <button class="nav-btn-3d nav-teams" onclick="gotoPage('teams')">🛡 Teams</button>
       <button class="nav-btn-3d nav-schedule" onclick="gotoPage('schedule')">📅 Schedule</button>
       <button class="nav-btn-3d nav-gallery" onclick="gotoPage('gallery')">🖼 Gallery</button>
     </div>
@@ -546,25 +568,30 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       </div>
     </div>
     <div id="auction-main" style="display:none;">
-      <!-- Auction Sub-Tabs -->
-      <div class="auc-tab-bar">
-        <button class="auc-tab active" onclick="switchAucTab('pre')" id="auc-tab-pre">Pre Auction</button>
-        <button class="auc-tab" onclick="switchAucTab('auctioned')" id="auc-tab-auctioned">Auctioned Players</button>
+      <div class="sec-hdr">
+        <div class="sec-dot"></div>
+        <div class="sec-title">Live Auction</div>
+        <div class="sec-line"></div>
       </div>
-
-      <!-- Tab: Pre Auction -->
-      <div id="auc-pane-pre">
-        <div id="pre-auction-list"></div>
-      </div>
-
-      <!-- Tab: Auctioned Players -->
-      <div id="auc-pane-auctioned" style="display:none;">
-        <div id="auc-year-strip" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;"></div>
-        <div id="auctioned-teams-grid" class="auc-teams-grid"></div>
-      </div>
-
+      <div id="live-team-budgets" style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;"></div>
+      <div id="live-spotlight-wrap" style="position:relative;">
+        <div class="sold-flash" id="live-sold-flash"></div>
+        <div class="sold-banner" id="live-sold-banner"></div>
+        <div id="live-spotlight-card"></div>
       </div>
     </div>
+  </div>
+
+  <!-- ── TEAMS PAGE ── -->
+  <div id="page-teams" class="page glass">
+    <button class="page-close-btn" onclick="closePage()" title="Close">&#10005;</button>
+    <div class="sec-hdr">
+      <div class="sec-dot"></div>
+      <div class="sec-title">Teams</div>
+      <div class="sec-line"></div>
+    </div>
+    <div id="teams-year-strip" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;"></div>
+    <div id="teams-grid" class="auc-teams-grid"></div>
   </div>
 
   <!-- ── SCHEDULE PAGE ── -->
@@ -624,6 +651,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <button class="auc-tab"        id="adm-tab-baseprices" onclick="switchAdminTab('baseprices')">Base Prices</button>
       <button class="auc-tab"        id="adm-tab-auction"    onclick="switchAdminTab('auction')">Auction Results</button>
       <button class="auc-tab"        id="adm-tab-gallery"    onclick="switchAdminTab('gallery')">Gallery</button>
+      <button class="auc-tab"        id="adm-tab-liveauction" onclick="switchAdminTab('liveauction')">Live Auction</button>
     </div>
 
     <!-- ── SUB-TAB: PLAYERS ── -->
@@ -750,6 +778,24 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <input type="file" id="gal-file-input" accept="image/*" multiple style="display:none;" onchange="handleGalleryUpload()"/>
       </div>
       <div id="gal-admin-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;"></div>
+    </div>
+
+    <div id="adm-pane-liveauction" style="display:none;">
+      <div class="info-box" style="margin-bottom:1rem;">
+        Search and spotlight a player, then click whichever team's owner raises a paddle. Owners and marquee players are excluded here since they're already assigned to a team.
+      </div>
+      <div class="field" style="max-width:300px;margin-bottom:0.75rem;">
+        <label>Search players</label>
+        <input type="text" id="adm-live-search" placeholder="Type a player name…" oninput="filterAdminLiveList()"/>
+      </div>
+      <div id="adm-live-player-list" class="pl-list"></div>
+
+      <div id="adm-live-spotlight-wrap" style="position:relative;margin-top:1.5rem;">
+        <div class="sold-flash" id="adm-live-sold-flash"></div>
+        <div class="sold-banner" id="adm-live-sold-banner"></div>
+        <div id="adm-live-spotlight"></div>
+      </div>
+      <div id="adm-live-controls" class="live-bid-controls"></div>
     </div>
 
   </div>
@@ -1042,6 +1088,7 @@ function dbToPlayer(r){
     basePts: r.base_pts,
     finalPts: r.final_pts||null,
     soldToTeam: r.sold_to_team||null,
+    unsold: !!r.unsold,
     registeredAt: r.registered_at ? new Date(r.registered_at).toLocaleString('en-IN') : '',
     photoUrl: r.photo_url||null
   };
@@ -1065,7 +1112,8 @@ function dbToAuction(r){
     pool: r.pool||[],
     curBidId: r.cur_bid_id||null,
     curBid: r.cur_bid||0,
-    bidLeader: r.bid_leader||null
+    bidLeader: r.bid_leader||null,
+    bidHistory: r.bid_history||[]
   };
 }
 
@@ -1121,6 +1169,7 @@ async function saveA(a, season){
     cur_bid_id: a.curBidId||null,
     cur_bid: a.curBid||0,
     bid_leader: a.bidLeader||null,
+    bid_history: a.bidHistory||[],
     updated_at: new Date().toISOString()
   });
 }
@@ -1155,9 +1204,11 @@ function gotoPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn,.nav-btn-3d').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const idx={reg:0,auction:1,schedule:2,gallery:3}[id]??0;
+  const idx={reg:0,auction:1,teams:2,schedule:3,gallery:4}[id]??0;
   document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
+  if(id!=='auction') stopLiveAuctionPoll();
   if(id==='auction') initAuction();
+  if(id==='teams') renderTeamsPage();
   if(id==='schedule') renderSchedule();
   if(id==='gallery') renderGallery();
 }
@@ -2144,50 +2195,8 @@ async function canStart(){
   return tms.length>=3;
 }
 
-async function buildAuction(){
-  const ps  = await getP();
-  const own = ps.filter(p=>p.isOwner);
-  const mrq = ps.filter(p=>p.isMarquee);
-  const tms = await getTeams();
-
-  // Build team objects with budget
-  const teams = tms.length>0 ? tms.map(t=>({
-    id:t.id, name:t.name, ownerId:null, budget:BUDGET, players:[]
-  })) : own.map((o,i)=>({
-    id:'t'+i, name:o.name+"'s Team", ownerId:o.id, budget:BUDGET, players:[]
-  }));
-
-  // Auto-assign owners
-  own.forEach(o=>{
-    const pts=o.basePts??(BASE_DEF[o.level]||300);
-    const t=teams.find(t=>t.id===tms.find(x=>x.ownerName===o.name)?.id)||teams[0];
-    if(t){t.budget-=pts;t.players.push({id:o.id,pts,auto:true,reason:'Owner'});}
-  });
-
-  // Auto-assign marquee
-  mrq.forEach((m,i)=>{
-    const pts=m.basePts??(BASE_DEF[m.level]||300);
-    const assignedTeam = tms.find(t=>t.marqueeId===m.id);
-    const t = assignedTeam ? teams.find(x=>x.id===assignedTeam.id) : teams[i%teams.length];
-    if(t){t.budget-=pts;t.players.push({id:m.id,pts,auto:true,reason:'Marquee'});}
-  });
-
-  const autoIds=new Set([...own.map(x=>x.id),...mrq.map(x=>x.id)]);
-  const pool=ps.filter(p=>!p.isOwner&&!p.isMarquee).map(p=>({id:p.id,status:'pending',soldTo:null,soldFor:null}));
-  return {teams,pool,curBidId:null,curBid:0,bidLeader:null};
-}
-
-function switchAucTab(tab){
-  ['pre','auctioned'].forEach(t=>{
-    document.getElementById('auc-pane-'+t).style.display = t===tab?'block':'none';
-    document.getElementById('auc-tab-'+t).classList.toggle('active', t===tab);
-  });
-  if(tab==='pre') renderPreAuction();
-  if(tab==='auctioned') renderAuctionedPlayers();
-}
-
 function switchAdminTab(tab){
-  ['players','teams','baseprices','auction','gallery'].forEach(t=>{
+  ['players','teams','baseprices','auction','gallery','liveauction'].forEach(t=>{
     document.getElementById('adm-pane-'+t).style.display = t===tab?'block':'none';
     document.getElementById('adm-tab-'+t).classList.toggle('active', t===tab);
   });
@@ -2195,76 +2204,44 @@ function switchAdminTab(tab){
   if(tab==='baseprices') renderBpRules();
   if(tab==='auction') renderAuctionResultsTable();
   if(tab==='gallery') renderAdminGallery();
+  if(tab==='liveauction') renderAdminLiveAuction();
 }
 
-async function renderPreAuction(){
-  const el = document.getElementById('pre-auction-list'); if(!el) return;
-  if(!_connected){el.innerHTML='<div class="empty">Connect to Supabase first.</div>';return;}
-  const ps = await getP();
-  // exclude owners, marquee players, and already sold players
-  const pool = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam);
-  if(!pool.length){el.innerHTML='<div class="empty" style="padding:2rem;">No players in auction pool yet.</div>';return;}
-  const levels = ['Advanced','Intermediate+','Intermediate','Beginner'];
-  let html = '';
-  levels.forEach(lvl=>{
-    const grp = pool.filter(p=>p.level===lvl).sort((a,b)=>a.name.localeCompare(b.name));
-    if(!grp.length) return;
-    html += `<div class="level-group">
-      <div class="level-group-header">
-        ${lvlTag(lvl)}
-        <span class="level-group-count">${grp.length} player${grp.length!==1?'s':''}</span>
-      </div>
-      <div class="pre-auc-grid">
-        ${grp.map(p=>`
-          <div class="pre-auc-card">
-            <div class="pre-auc-photo">
-              ${p.photoUrl?`<img src="${p.photoUrl}" alt="${p.name}"/>`:'&#128100;'}
-            </div>
-            <div style="flex:1;min-width:0;">
-              <div class="pre-auc-name">${p.name}</div>
-              <div class="pre-auc-flat">${p.flat}${p.isForeign?' · <span style="color:var(--amber);font-size:9px;">Foreign</span>':''}</div>
-              <div class="pre-auc-pts">${p.basePts!=null?p.basePts+'<span style="font-size:10px;color:var(--muted);"> pts</span>':'<span style="color:var(--muted);font-size:11px;">No base price</span>'}</div>
-            </div>
-          </div>`).join('')}
-      </div>
-    </div>`;
-  });
-  el.innerHTML = html;
+let TEAMS_VIEW_YEAR = null;
+function pickTeamsYear(year){ TEAMS_VIEW_YEAR = year; renderTeamsPage(); }
+function computeTeamAcquisitions(ps, t){
+  const soldPs = ps.filter(p=>p.soldToTeam && String(p.soldToTeam).trim());
+  const auto=[];
+  if(t.marqueeId){
+    const mp=ps.find(p=>p.id===t.marqueeId);
+    if(mp) auto.push({p:mp, role:'Marquee', pts:mp.basePts||0});
+  }
+  const ownerP = ps.find(p=>p.isOwner && p.name.toLowerCase().trim()===t.ownerName.toLowerCase().trim());
+  if(ownerP) auto.push({p:ownerP, role:'Owner', pts:ownerP.basePts||0});
+  const auc = soldPs.filter(p=>
+    String(p.soldToTeam).trim()===String(t.id).trim() &&
+    !auto.find(x=>x.p.id===p.id)
+  );
+  const autoSpent = auto.reduce((s,x)=>s+x.pts, 0);
+  const aucSpent  = auc.reduce((s,p)=>s+(p.finalPts||0), 0);
+  const spent = autoSpent + aucSpent;
+  const remaining = BUDGET - spent;
+  return {auto, auc, spent, remaining};
 }
 
-let AUC_VIEW_YEAR = null;
-function pickAucYear(year){ AUC_VIEW_YEAR = year; renderAuctionedPlayers(); }
-async function renderAuctionedPlayers(){
-  const el=document.getElementById('auctioned-teams-grid'); if(!el) return;
+async function renderTeamsPage(){
+  const el=document.getElementById('teams-grid'); if(!el) return;
   if(!_connected){el.innerHTML='<div class="empty">Connect to Supabase first.</div>';return;}
-  if(!AUC_VIEW_YEAR) AUC_VIEW_YEAR = ACTIVE_SEASON;
-  await renderYearStrip('auc-year-strip', AUC_VIEW_YEAR, 'pickAucYear');
-  const viewYear = AUC_VIEW_YEAR;
+  if(!TEAMS_VIEW_YEAR) TEAMS_VIEW_YEAR = ACTIVE_SEASON;
+  await renderYearStrip('teams-year-strip', TEAMS_VIEW_YEAR, 'pickTeamsYear');
+  const viewYear = TEAMS_VIEW_YEAR;
   const ps=await getP(viewYear); const tms=await getTeams(viewYear);
   if(!tms.length){el.innerHTML='<div style="grid-column:1/-1;color:var(--muted);text-align:center;padding:2rem;font-size:13px;">No teams set up for '+viewYear+' yet.</div>';return;}
   const soldPs=ps.filter(p=>p.soldToTeam&&p.soldToTeam.trim());
   let hPts=0,hId=null;
   soldPs.forEach(p=>{if((p.finalPts||0)>hPts){hPts=p.finalPts;hId=p.id;}});
   el.innerHTML=tms.map(t=>{
-    const auto=[];
-    // Marquee — matched by marqueeId
-    if(t.marqueeId){
-      const mp=ps.find(p=>p.id===t.marqueeId);
-      if(mp) auto.push({p:mp, role:'Marquee', pts:mp.basePts||0});
-    }
-    // Owner — matched by is_owner=true AND name matches team owner_name (case-insensitive)
-    const ownerP = ps.find(p=>p.isOwner && p.name.toLowerCase().trim()===t.ownerName.toLowerCase().trim());
-    if(ownerP) auto.push({p:ownerP, role:'Owner', pts:ownerP.basePts||0});
-    // Auctioned players — sold to this team, not already in auto
-    const auc=soldPs.filter(p=>
-      String(p.soldToTeam).trim()===String(t.id).trim() &&
-      !auto.find(x=>x.p.id===p.id)
-    );
-    const autoIds = new Set(auto.map(x=>x.p.id));
-    const autoSpent = auto.reduce((s,x)=>s+x.pts, 0);
-    const aucSpent  = auc.reduce((s,p)=>s+(p.finalPts||0), 0);
-    const spent = autoSpent + aucSpent;
-    const remaining = BUDGET - spent;
+    const {auto, auc, spent, remaining} = computeTeamAcquisitions(ps, t);
     const budgetColor = remaining > 7000 ? 'var(--green)' : remaining > 4000 ? 'var(--amber)' : 'var(--red)';
     const rows=[
       ...auto.map(({p,role,pts})=>`<div class="auc-player-row">
@@ -2303,59 +2280,243 @@ async function renderAuctionedPlayers(){
     </div>`;
   }).join('');
 }
+
+let _liveAuctionPollTimer = null;
+function startLiveAuctionPoll(){
+  stopLiveAuctionPoll();
+  _liveAuctionPollTimer = setInterval(renderLiveAuctionPublic, 3000);
+}
+function stopLiveAuctionPoll(){
+  if(_liveAuctionPollTimer){ clearInterval(_liveAuctionPollTimer); _liveAuctionPollTimer=null; }
+}
+
+async function renderLiveAuctionPublic(){
+  if(!_connected) return;
+  const ps = await getP();
+  const tms = await getTeams();
+  const budgetsEl = document.getElementById('live-team-budgets');
+  if(budgetsEl){
+    budgetsEl.innerHTML = tms.map(t=>{
+      const {remaining} = computeTeamAcquisitions(ps, t);
+      const color = remaining > 7000 ? 'var(--green)' : remaining > 4000 ? 'var(--amber)' : 'var(--red)';
+      return `<div style="flex:1;min-width:140px;background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:8px;padding:10px 14px;">
+        <div style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:4px;">${t.name}</div>
+        <div style="font-size:11px;color:${color};">${remaining.toLocaleString()} pts left</div>
+      </div>`;
+    }).join('');
+  }
+  const a = await getA();
+  const cardEl = document.getElementById('live-spotlight-card');
+  if(!cardEl) return;
+  if(!a || !a.curBidId){
+    cardEl.innerHTML = '<div class="empty" style="padding:3rem 1rem;">Waiting for the admin to bring up the next player…</div>';
+    return;
+  }
+  const p = ps.find(x=>x.id===a.curBidId);
+  if(!p){ cardEl.innerHTML = '<div class="empty" style="padding:3rem 1rem;">Player not found.</div>'; return; }
+  const leaderTeam = tms.find(t=>t.id===a.bidLeader);
+  const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  cardEl.innerHTML = `
+    <div style="text-align:center;padding:1.5rem 1rem;">
+      <div style="width:100px;height:100px;border-radius:50%;background:rgba(255,216,77,0.1);border:2px solid rgba(255,216,77,0.35);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:36px;color:var(--gold);margin:0 auto 14px;overflow:hidden;">
+        ${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;"/>`:initials}
+      </div>
+      <div style="font-family:'Cinzel',serif;font-weight:700;font-size:26px;color:var(--gold);margin-bottom:4px;">${p.name}</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">${p.level} · Base ${p.basePts??'—'} pts</div>
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Current bid</div>
+      <div style="font-family:'Cinzel',serif;font-size:38px;font-weight:900;color:var(--gold);">${(a.curBid||0).toLocaleString()} pts</div>
+      <div style="font-size:13px;color:var(--green);margin-top:4px;">${leaderTeam?leaderTeam.name+' leading':'No bids yet'}</div>
+      <div style="margin-top:16px;max-height:120px;overflow-y:auto;text-align:left;border-top:1px solid rgba(255,216,77,0.12);padding-top:10px;">
+        ${(a.bidHistory||[]).map(h=>{
+          const tn = (tms.find(t=>t.id===h.teamId)||{}).name || h.teamId;
+          return `<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:3px 0;"><span><b style="color:var(--text);">${tn}</b> ${h.note}</span><span style="color:var(--gold);font-weight:700;">${h.amt} pts</span></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
 async function initAuction(){
   if(!_connected){
     document.getElementById('auction-setup-warn').style.display='block';
     document.getElementById('auction-main').style.display='none';
-    document.querySelector('.setup-warn p').textContent='Connect to Supabase first to use the auction.';
+    document.querySelector('#page-auction .setup-warn p').textContent='Connect to Supabase first to use the auction.';
+    stopLiveAuctionPoll();
     return;
   }
   if(!await canStart()){
     document.getElementById('auction-setup-warn').style.display='block';
     document.getElementById('auction-main').style.display='none';
-    document.querySelector('.setup-warn p').textContent='The auction needs 3 teams to be created first. Go to Admin Panel → Teams tab to add teams.';
+    document.querySelector('#page-auction .setup-warn p').textContent='The auction needs 3 teams to be created first. Go to Admin Panel → Teams tab to add teams.';
+    stopLiveAuctionPoll();
     return;
   }
   document.getElementById('auction-setup-warn').style.display='none';
   document.getElementById('auction-main').style.display='block';
-  // Always rebuild pool fresh so new players/base prices are included
-  const fresh = await buildAuction();
-  const existing = await getA();
-  if(existing && existing.pool && existing.pool.length){
-    // Preserve sold/unsold status for players already processed
-    fresh.pool.forEach(fp=>{
-      const old = existing.pool.find(op=>op.id===fp.id);
-      if(old){fp.status=old.status;fp.soldTo=old.soldTo;fp.soldFor=old.soldFor;}
-    });
-    fresh.curBidId=existing.curBidId;
-    fresh.curBid=existing.curBid;
-    fresh.bidLeader=existing.bidLeader;
-  }
-  await saveA(fresh);
-  // Default to Pre Auction tab
-  switchAucTab('pre');
-  // Pre-load live tab data
-  await renderTeamCards(fresh);
+  await renderLiveAuctionPublic();
+  startLiveAuctionPoll();
 }
 
-async function renderTeamCards(a){
-  const el=document.getElementById('team-cards-wrap'); if(!el) return;
+/* ══════════════════════════════════════════════
+   ADMIN LIVE AUCTION CONTROLS
+══════════════════════════════════════════════ */
+async function renderAdminLiveAuction(){
+  if(!requireConn()) return;
   const ps = await getP();
-  el.innerHTML=a.teams.map(t=>{
-    const bc=t.budget>5000?'ok':t.budget>2000?'low':'critical';
-    const rows=t.players.map(tp=>{
-      const p=ps.find(x=>x.id===tp.id);
-      const name=p?p.name:tp.id;
-      return`<div class="tc-player-row"><span class="tc-player-name">${name}${tp.auto?` <span class="assign-pill">${tp.reason}</span>`:''}</span><span class="tc-player-pts">${tp.pts}</span></div>`;
-    }).join('');
-    return`<div class="team-card">
-      <div class="tc-header">
-        <div class="tc-name">${t.name}</div>
-        <div><div class="tc-budget ${bc}">${t.budget}</div><div class="tc-label">pts left</div></div>
-      </div>
-      ${rows||'<div style="font-size:11px;color:var(--muted);">No players yet</div>'}
+  const tms = await getTeams();
+  const a = await getA();
+  const eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold);
+  const listEl = document.getElementById('adm-live-player-list');
+  listEl.innerHTML = eligible.length ? eligible.map(p=>{
+    const disabled = a && a.curBidId===p.id;
+    return `<div class="pl-item" onclick="${disabled?'':`adminSelectPlayer('${p.id}')`}" style="${disabled?'opacity:0.4;cursor:default;':''}" data-name="${p.name.toLowerCase()}">
+      <span class="pl-name">${p.name}</span><span class="pl-badge">${p.basePts??'—'} pts</span>
     </div>`;
-  }).join('');
+  }).join('') : '<div class="empty" style="padding:1rem;">No players left to auction — everyone remaining is either sold, unsold, or already an owner/marquee.</div>';
+  renderAdminLiveSpotlight(ps, tms, a);
+}
+
+function filterAdminLiveList(){
+  const q = document.getElementById('adm-live-search').value.toLowerCase().trim();
+  document.querySelectorAll('#adm-live-player-list .pl-item').forEach(el=>{
+    el.style.display = (!q || el.dataset.name.includes(q)) ? '' : 'none';
+  });
+}
+
+async function adminSelectPlayer(playerId){
+  if(!requireConn()) return;
+  const a = (await getA()) || {pool:[],curBidId:null,curBid:0,bidLeader:null,bidHistory:[]};
+  a.curBidId = playerId; a.curBid = 0; a.bidLeader = null; a.bidHistory = [];
+  await saveA(a);
+  document.getElementById('adm-live-search').value='';
+  await renderAdminLiveAuction();
+}
+
+function renderAdminLiveSpotlight(ps, tms, a){
+  const spotEl = document.getElementById('adm-live-spotlight');
+  const ctrlEl = document.getElementById('adm-live-controls');
+  if(!a || !a.curBidId){
+    spotEl.innerHTML = '<div class="empty" style="padding:2rem;">Select a player above to spotlight them.</div>';
+    ctrlEl.innerHTML = '';
+    return;
+  }
+  const p = ps.find(x=>x.id===a.curBidId);
+  if(!p){ spotEl.innerHTML = '<div class="empty" style="padding:2rem;">Player not found.</div>'; ctrlEl.innerHTML=''; return; }
+  const leaderTeam = tms.find(t=>t.id===a.bidLeader);
+  const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  spotEl.innerHTML = `
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:12px;padding:20px;">
+      <div style="width:72px;height:72px;border-radius:50%;background:rgba(255,216,77,0.1);border:2px solid rgba(255,216,77,0.35);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:26px;color:var(--gold);overflow:hidden;flex-shrink:0;">
+        ${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;"/>`:initials}
+      </div>
+      <div style="flex:1;min-width:180px;">
+        <div style="font-family:'Cinzel',serif;font-weight:700;font-size:20px;color:var(--gold);">${p.name}</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">${p.level} · Base ${p.basePts??'—'} pts</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Current bid</div>
+        <div style="font-family:'Cinzel',serif;font-size:28px;font-weight:900;color:var(--gold);">${(a.curBid||0).toLocaleString()} pts</div>
+        <div style="font-size:12px;color:var(--green);">${leaderTeam?leaderTeam.name+' leading':'No bids yet'}</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;max-height:130px;overflow-y:auto;background:rgba(0,0,0,0.2);border-radius:8px;padding:10px 14px;">
+      ${(a.bidHistory&&a.bidHistory.length) ? a.bidHistory.map(h=>{
+        const tn = (tms.find(t=>t.id===h.teamId)||{}).name || h.teamId;
+        return `<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:3px 0;"><span><b style="color:var(--text);">${tn}</b> ${h.note}</span><span style="color:var(--gold);font-weight:700;">${h.amt} pts</span></div>`;
+      }).join('') : '<div style="font-size:11px;color:var(--muted);">No bids yet.</div>'}
+    </div>`;
+
+  const teamBtns = tms.map(t=>
+    `<button class="team-bid-btn ${a.bidLeader===t.id?'is-leading':''}" onclick="adminPlaceBid('${t.id}')">${t.name} Bid</button>`
+  ).join('');
+  const undoDisabled = (a.bidHistory&&a.bidHistory.length) ? '' : 'disabled';
+  const soldDisabled = a.bidLeader ? '' : 'disabled';
+  ctrlEl.innerHTML = teamBtns +
+    `<button class="btn-sm" ${undoDisabled} onclick="undoLastBid()">&#8630; Undo Last Bid</button>` +
+    `<button class="btn-sm success" ${soldDisabled} onclick="adminFinalizeSale()">Mark Sold</button>` +
+    `<button class="btn-sm danger" onclick="adminFinalizeUnsold()">Mark Unsold</button>`;
+}
+
+async function adminPlaceBid(teamId){
+  if(!requireConn()) return;
+  const a = await getA(); if(!a || !a.curBidId) return;
+  const ps = await getP(); const tms = await getTeams();
+  const p = ps.find(x=>x.id===a.curBidId);
+  const team = tms.find(t=>t.id===teamId);
+  const newBid = a.bidLeader===null ? (p.basePts||0) : a.curBid + 50;
+  const {remaining} = computeTeamAcquisitions(ps, team);
+  if(remaining < newBid){ toast(team.name+' does not have enough remaining budget for this bid.','error'); return; }
+  a.curBid = newBid;
+  a.bidLeader = teamId;
+  a.bidHistory = a.bidHistory||[];
+  a.bidHistory.push({teamId, note: a.bidHistory.length===0 ? 'opens' : '+50', amt:newBid});
+  await saveA(a);
+  await renderAdminLiveAuction();
+}
+
+async function undoLastBid(){
+  if(!requireConn()) return;
+  const a = await getA(); if(!a || !a.bidHistory || !a.bidHistory.length) return;
+  a.bidHistory.pop();
+  if(a.bidHistory.length){
+    const last = a.bidHistory[a.bidHistory.length-1];
+    a.curBid = last.amt; a.bidLeader = last.teamId;
+  } else {
+    a.curBid = 0; a.bidLeader = null;
+  }
+  await saveA(a);
+  await renderAdminLiveAuction();
+}
+
+function spawnLiveConfetti(){
+  const colors = ['#ffd84d','#3cd282','#64c8ff','#e8c07a'];
+  for(let i=0;i<40;i++){
+    const c = document.createElement('div');
+    c.className = 'live-confetti';
+    c.style.left = Math.random()*100 + 'vw';
+    c.style.background = colors[Math.floor(Math.random()*colors.length)];
+    c.style.animation = `liveConfettiFall ${1.2+Math.random()*1.2}s ease-in forwards`;
+    c.style.animationDelay = (Math.random()*0.3)+'s';
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(), 3000);
+  }
+}
+
+async function adminFinalizeSale(){
+  if(!requireConn()) return;
+  const a = await getA(); if(!a || !a.curBidId || !a.bidLeader) return;
+  const ps = await getP(); const tms = await getTeams();
+  const p = ps.find(x=>x.id===a.curBidId);
+  const team = tms.find(t=>t.id===a.bidLeader);
+  try{
+    await savePlayerField(p.id, {final_pts: a.curBid, sold_to_team: team.id});
+    const flash = document.getElementById('adm-live-sold-flash');
+    const banner = document.getElementById('adm-live-sold-banner');
+    flash.classList.remove('show'); void flash.offsetWidth; flash.classList.add('show');
+    banner.innerHTML = `${p.name}<br>SOLD to <b>${team.name}</b> for <b>${a.curBid.toLocaleString()} pts</b>`;
+    banner.classList.add('show');
+    spawnLiveConfetti();
+    a.curBidId=null; a.curBid=0; a.bidLeader=null; a.bidHistory=[];
+    await saveA(a);
+    setTimeout(async ()=>{
+      banner.classList.remove('show');
+      await renderAdminLiveAuction();
+      await updateStats();
+    }, 1800);
+  } catch(e){ toast('Error: '+e.message,'error'); }
+}
+
+async function adminFinalizeUnsold(){
+  if(!requireConn()) return;
+  const a = await getA(); if(!a || !a.curBidId) return;
+  const ps = await getP();
+  const p = ps.find(x=>x.id===a.curBidId);
+  try{
+    await savePlayerField(p.id, {unsold: true});
+    toast(p.name+' marked unsold.');
+    a.curBidId=null; a.curBid=0; a.bidLeader=null; a.bidHistory=[];
+    await saveA(a);
+    await renderAdminLiveAuction();
+  } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
 
