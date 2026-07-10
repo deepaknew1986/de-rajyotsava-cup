@@ -2093,54 +2093,7 @@ async function initAuction(){
   // Default to Pre Auction tab
   switchAucTab('pre');
   // Pre-load live tab data
-  await renderPool();
-  await renderTeamCards(a);
-  renderBidPanel(a);
-}
-
-async function renderAutoAssigned(a){
-  const ps=await getP();
-  const el=document.getElementById('auto-assigned-list');
-  const rows=a.teams.map(t=>{
-    const ap=t.players.filter(x=>x.auto); if(!ap.length) return'';
-    return`<div style="margin-bottom:8px;font-size:12px;color:var(--muted2);">
-      <span style="color:var(--gold);font-family:'Cinzel',serif;">${t.name}</span>
-      ${ap.map(x=>{const p=ps.find(q=>q.id===x.id);return p?`<span style="margin-left:8px;">${p.name} <span class="assign-pill">${x.reason} · ${x.pts} pts</span></span>`:''}).join('')}
-    </div>`;
-  }).join('');
-  el.innerHTML=rows||'<div style="color:var(--muted);font-size:12px;margin-bottom:1rem;">None.</div>';
-}
-
-async function renderPool(){
-  const a=await getA(); if(!a) return;
-  const ps=await getP();
-  const lf=document.getElementById('pool-filter')?.value||'';
-  const sf=document.getElementById('pool-status')?.value||'';
-  const pool=a.pool.filter(pp=>{
-    const p=ps.find(x=>x.id===pp.id); if(!p) return false;
-    if(lf&&p.level!==lf) return false;
-    if(sf&&pp.status!==sf) return false;
-    return true;
-  });
-  const el=document.getElementById('pool-list');
-  if(!pool.length){el.innerHTML='<div class="empty" style="border:1px solid var(--border);border-radius:6px;padding:1.5rem 0;">No players match filter.</div>';return;}
-  el.innerHTML='<div class="pool-grid">'+pool.map(pp=>{
-    const p=ps.find(x=>x.id===pp.id); if(!p) return'';
-    const isCur=a.curBidId===pp.id;
-    const st=pp.status==='sold'?'sold':(pp.status==='unsold'?'unsold':'');
-    const soldTeam=pp.soldTo?a.teams.find(t=>t.id===pp.soldTo):null;
-    return`<div class="player-card ${isCur?'current':''} ${st}">
-      ${pp.status==='sold'?`<div class="pc-sold-badge sold-b">Sold · ${pp.soldFor} pts</div>`:''}
-      ${pp.status==='unsold'?`<div class="pc-sold-badge unsold-b">Unsold</div>`:''}
-      <div class="pc-name">${p.name}</div>
-      <div class="pc-flat">${p.flat}</div>
-      <div class="pc-tags">${lvlTag(p.level)}<span class="tag ${p.gender==='Male'?'male':'female'}">${p.gender}</span>${p.isMarquee?'<span class="tag marquee">Marquee</span>':''}${p.isForeign?'<span class="tag owner">Foreign</span>':''}</div>
-      <div class="pc-price-label">Base Price</div>
-      <div class="pc-price">${p.basePts??'—'} <span style="font-size:11px;color:var(--muted);">pts</span></div>
-      ${pp.status==='sold'?`<div style="font-size:11px;color:var(--green);margin-top:6px;">${soldTeam?soldTeam.name:''}</div>`:''}
-      ${pp.status==='pending'?(p.basePts!=null?`<button class="act-btn pts-btn" style="margin-top:8px;" onclick="startBid('${pp.id}')">&#9654; Bid</button>`:`<div style="font-size:10px;color:var(--muted);margin-top:6px;">Set base price first</div>`):''}
-    </div>`;
-  }).join('')+'</div>';
+  await renderTeamCards(fresh);
 }
 
 async function renderTeamCards(a){
@@ -2163,85 +2116,6 @@ async function renderTeamCards(a){
   }).join('');
 }
 
-async function startBid(pid){
-  const a=await getA(); if(!a) return;
-  const ps=await getP();
-  const pp=a.pool.find(x=>x.id===pid);
-  const p=ps.find(x=>x.id===pid);
-  if(!pp||pp.status!=='pending'||!p) return;
-  a.curBidId=pid; a.curBid=p.basePts; a.bidLeader=null;
-  await saveA(a); await renderPool(); renderBidPanel(a);
-}
-
-async function renderBidPanel(a){
-  if(!a) { a = await getA(); }
-  const el=document.getElementById('bid-content');
-  if(!a||!a.curBidId){el.innerHTML='<div class="bid-empty">Click &#9654; Bid on a player<br/>to start</div>';return;}
-  const ps=await getP();
-  const p=ps.find(x=>x.id===a.curBidId);
-  if(!p){el.innerHTML='<div class="bid-empty">Select a player</div>';return;}
-  const tBtns=a.teams.map(t=>{
-    const can=t.budget>=a.curBid; const lead=a.bidLeader===t.id;
-    return`<button class="bid-team-btn ${lead?'winning':''}" onclick="placeBid('${t.id}')" ${!can?'disabled title="Insufficient budget"':''}>${t.name}<br/><span style="font-size:10px;color:${can?'var(--muted)':'var(--red)'};">${t.budget} left</span></button>`;
-  }).join('');
-  el.innerHTML=`
-    <div class="bid-player-name">${p.name}</div>
-    <div class="bid-player-info">${p.flat} · ${p.level} · ${p.gender}</div>
-    <div class="bid-label">Current Bid</div>
-    <div class="bid-current">${a.curBid} pts</div>
-    ${a.bidLeader?`<div style="text-align:center;font-size:11px;color:var(--green);margin-bottom:8px;">Leading: ${a.teams.find(t=>t.id===a.bidLeader)?.name||''}</div>`:''}
-    <div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:6px;letter-spacing:1px;">RAISE BID</div>
-    <div class="bid-increment">
-      <button class="inc-btn" onclick="raiseBid(50)">+50</button>
-      <button class="inc-btn" onclick="raiseBid(100)">+100</button>
-      <button class="inc-btn" onclick="raiseBid(200)">+200</button>
-      <button class="inc-btn" onclick="raiseBid(500)">+500</button>
-    </div>
-    <div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:6px;letter-spacing:1px;">BID FOR TEAM</div>
-    <div class="bid-team-btns">${tBtns}</div>
-    <div class="bid-actions">
-      <button class="bid-confirm" onclick="soldPlayer()" ${!a.bidLeader?'disabled':''}>&#10003; Sold</button>
-      <button class="bid-unsold" onclick="unsoldPlayer()">&#10005; Unsold</button>
-    </div>`;
-}
-
-async function placeBid(tid){
-  const a=await getA(); if(!a||!a.curBidId) return;
-  a.bidLeader=tid; await saveA(a); renderBidPanel(a);
-}
-async function raiseBid(amt){
-  const a=await getA(); if(!a||!a.curBidId) return;
-  a.curBid+=amt; a.bidLeader=null; await saveA(a); renderBidPanel(a);
-}
-async function soldPlayer(){
-  const a=await getA(); if(!a||!a.curBidId||!a.bidLeader) return;
-  const ps=await getP();
-  const pp=a.pool.find(x=>x.id===a.curBidId);
-  const t=a.teams.find(x=>x.id===a.bidLeader);
-  const p=ps.find(x=>x.id===a.curBidId);
-  if(!pp||!t||!p) return;
-  pp.status='sold'; pp.soldTo=a.bidLeader; pp.soldFor=a.curBid;
-  t.budget-=a.curBid; t.players.push({id:p.id,pts:a.curBid,auto:false,reason:'Auction'});
-  a.curBidId=null; a.curBid=0; a.bidLeader=null;
-  await saveA(a);
-  toast(p.name+' sold to '+t.name+' for '+pp.soldFor+' pts!','success');
-  await renderPool(); await renderTeamCards(a); renderBidPanel(a); await renderAutoAssigned(a);
-}
-async function unsoldPlayer(){
-  const a=await getA(); if(!a||!a.curBidId) return;
-  const ps=await getP();
-  const pp=a.pool.find(x=>x.id===a.curBidId);
-  const p=ps.find(x=>x.id===a.curBidId);
-  if(pp) pp.status='unsold';
-  a.curBidId=null; a.curBid=0; a.bidLeader=null;
-  await saveA(a); toast((p?.name||'Player')+' marked unsold.');
-  await renderPool(); renderBidPanel(a); await renderTeamCards(a);
-}
-async function resetAuction(){
-  if(!confirm('Reset the entire auction?')) return;
-  await saveA({teams:[],pool:[],curBidId:null,curBid:0,bidLeader:null});
-  await initAuction(); toast('Auction reset.');
-}
 
 /* ══════════════════════════════════════════════
    TOAST
