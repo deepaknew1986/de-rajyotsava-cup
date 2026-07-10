@@ -1036,7 +1036,7 @@ async function saveA(a){
    CONSTANTS
 ══════════════════════════════════════════════ */
 const ADMIN_PW='Admin123';
-const BUDGET=10000;const MAX_OWN=3;const MAX_MRQ=3;
+const BUDGET=12000;const MAX_OWN=3;const MAX_MRQ=3;
 const BASE_DEF={Advanced:1000,'Intermediate+':700,Intermediate:500,Beginner:300};
 
 /* ══════════════════════════════════════════════
@@ -1089,6 +1089,7 @@ function showAdminPage(){
   loadAdminPage();
 }
 async function loadAdminPage(){
+  await applyBpRules().catch(()=>{});
   await renderAdminTable();
   await updateStats();
   await renderTeams();
@@ -1175,10 +1176,12 @@ async function submitReg(e){
       if(status) status.style.display='none';
     }
     btn.textContent='Registering…';
+    const bpRules = await getBpRules().catch(()=>[]);
+    const bpMatch = matchBpRuleFor(bpRules, level, isForeign);
     await sbInsert('players',{
       id: playerId, name, flat, mobile, gender, level,
       is_owner:false, is_marquee:false, is_foreign:isForeign,
-      is_kid:false, age:null, base_pts:null, photo_url: photoUrl
+      is_kid:false, age:null, base_pts:bpMatch?bpMatch.price:null, photo_url: photoUrl
     });
     toast('🏸 Registered! Welcome, '+name+'!','success');
     document.getElementById('reg-form').reset();
@@ -1247,10 +1250,12 @@ async function submitKidReg(e){
       if(status) status.style.display='none';
     }
     btn.textContent='Registering…';
+    const bpRules = await getBpRules().catch(()=>[]);
+    const bpMatch = matchBpRuleFor(bpRules, level, isForeign);
     await sbInsert('players',{
       id: playerId, name, flat, mobile, gender, level,
       is_owner:false, is_marquee:false, is_foreign:isForeign,
-      is_kid:true, age, base_pts:null, photo_url: photoUrl
+      is_kid:true, age, base_pts:bpMatch?bpMatch.price:null, photo_url: photoUrl
     });
     toast('🏸 '+name+' registered in Kids category!','success');
     document.getElementById('kid-form').reset();
@@ -1846,17 +1851,19 @@ async function addBpRule(){
   } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
+function matchBpRuleFor(rules, level, isForeign){
+  const f = isForeign?'Y':'N';
+  return rules.find(r=>r.level===level&&r.foreign===f)||
+         rules.find(r=>r.level===level&&r.foreign==='All')||
+         rules.find(r=>r.level==='All'&&r.foreign===f)||
+         rules.find(r=>r.level==='All'&&r.foreign==='All')||null;
+}
 async function applyBpRules(){
   const rules = await getBpRules();
   const ps    = await getP();
   for(const p of ps){
-    const isForeign = p.isForeign?'Y':'N';
-    const match =
-      rules.find(r=>r.level===p.level&&r.foreign===isForeign)||
-      rules.find(r=>r.level===p.level&&r.foreign==='All')||
-      rules.find(r=>r.level==='All'&&r.foreign===isForeign)||
-      rules.find(r=>r.level==='All'&&r.foreign==='All');
-    if(match) await savePlayerField(p.id,{base_pts:match.price});
+    const match = matchBpRuleFor(rules, p.level, p.isForeign);
+    if(match && match.price !== p.basePts) await savePlayerField(p.id,{base_pts:match.price});
   }
 }
 
