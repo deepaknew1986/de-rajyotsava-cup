@@ -2124,7 +2124,13 @@ function toast(msg,type=''){
   clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),3400);
 }
 
-/* init — no auto-load needed, Supabase connects on demand */
+/* Auto-connect to Supabase as soon as the page loads, not only after entering the site */
+testConnection().then(ok=>{
+  _connected = ok;
+  renderConnBanner();
+  if(ok) toast('Connected to Supabase!','success');
+  else toast('Could not connect to database. Check your network.','error');
+});
 function closePage(){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn-3d').forEach(b=>b.classList.remove('active'));
