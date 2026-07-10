@@ -446,7 +446,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 
     <!-- Registration Sub-Tabs -->
     <div class="reg-tabs">
-      <button class="reg-tab active" onclick="switchRegTab('adult')">Adult (15 &amp; above)</button>
+      <button class="reg-tab active" onclick="switchRegTab('adult')">Adult</button>
       <button class="reg-tab" onclick="switchRegTab('kid')">Kid (under 16)</button>
     </div>
 
@@ -1006,6 +1006,19 @@ async function startNewSeason(year){
   } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
+async function addPastSeason(year){
+  if(!requireConn()) return;
+  const yr = (year||'').trim();
+  if(!/^\d{4}$/.test(yr)){ toast('Enter a valid 4-digit year','error'); return; }
+  const seasons = await getSeasons();
+  if(seasons.find(s=>s.year===yr)){ toast('That season already exists','error'); return; }
+  try{
+    await sbInsert('seasons',{id:'season_'+yr, year:yr, is_current:false},true);
+    toast('Season '+yr+' added — '+ACTIVE_SEASON+' is still current. You can now pick '+yr+' anywhere you see a year selector.','success');
+    await renderSeasonSwitcher();
+  } catch(e){ toast('Error: '+e.message,'error'); }
+}
+
 function sbHeaders(admin=false){
   const key = admin ? SB_SERVICE : SB_ANON;
   return {
@@ -1240,11 +1253,16 @@ async function renderSeasonSwitcher(){
   el.innerHTML = `
     <span style="border:1px solid rgba(255,216,77,0.3);border-radius:5px;padding:6px 12px;font-size:11px;color:var(--gold);font-weight:700;letter-spacing:0.5px;">Season ${ACTIVE_SEASON||'—'}</span>
     <button class="btn-sm" onclick="promptNewSeason()">+ New Season</button>
+    <button class="btn-sm" onclick="promptAddPastSeason()">+ Add Past Season</button>
   `;
 }
 function promptNewSeason(){
   const yr = prompt('Enter the year for the new season (e.g. 2027):');
   if(yr) startNewSeason(yr.trim());
+}
+function promptAddPastSeason(){
+  const yr = prompt('Enter the past year to add (e.g. 2025). This will NOT change your current season — it just makes '+'that year selectable everywhere, so you can upload old photos/data to it.');
+  if(yr) addPastSeason(yr.trim());
 }
 
 async function renderYearStrip(containerId, activeYear, onPick){
@@ -1912,11 +1930,13 @@ async function saveMarqueePlayer(){
     if(mrqCt>=MAX_MRQ){toast('Maximum 3 marquee players already tagged. Remove one first.','error');return;}
   }
   try{
+    const bpRules = await getBpRules().catch(()=>[]);
+    const bpMatch = matchBpRuleFor(bpRules, level, false);
     await sbInsert('players',{
       id:'player_'+Date.now(),
       name, flat:flat||'', mobile:mobile||null, gender, level,
       is_owner:false, is_marquee:isMarquee, is_foreign:false,
-      base_pts:null, photo_url:null, season: ACTIVE_SEASON
+      base_pts:bpMatch?bpMatch.price:null, photo_url:null, season: ACTIVE_SEASON
     });
     closeModal('add-marquee-modal');
     toast(name+' added as '+(isMarquee?'Marquee Player':'regular player')+'!','success');
@@ -2359,11 +2379,19 @@ async function initAuction(){
 /* ══════════════════════════════════════════════
    ADMIN LIVE AUCTION CONTROLS
 ══════════════════════════════════════════════ */
+let _liveCache = {ps:[], tms:[], a:null};
+
 async function renderAdminLiveAuction(){
   if(!requireConn()) return;
-  const ps = await getP();
-  const tms = await getTeams();
-  const a = await getA();
+  _liveCache.ps = await getP();
+  _liveCache.tms = await getTeams();
+  _liveCache.a = (await getA()) || {pool:[],curBidId:null,curBid:0,bidLeader:null,bidHistory:[]};
+  renderAdminLivePlayerList();
+  renderAdminLiveSpotlight();
+}
+
+function renderAdminLivePlayerList(){
+  const {ps, a} = _liveCache;
   const eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold);
   const listEl = document.getElementById('adm-live-player-list');
   listEl.innerHTML = eligible.length ? eligible.map(p=>{
@@ -2372,7 +2400,6 @@ async function renderAdminLiveAuction(){
       <span class="pl-name">${p.name}</span><span class="pl-badge">${p.basePts??'—'} pts</span>
     </div>`;
   }).join('') : '<div class="empty" style="padding:1rem;">No players left to auction — everyone remaining is either sold, unsold, or already an owner/marquee.</div>';
-  renderAdminLiveSpotlight(ps, tms, a);
 }
 
 function filterAdminLiveList(){
@@ -2382,16 +2409,18 @@ function filterAdminLiveList(){
   });
 }
 
-async function adminSelectPlayer(playerId){
+function adminSelectPlayer(playerId){
   if(!requireConn()) return;
-  const a = (await getA()) || {pool:[],curBidId:null,curBid:0,bidLeader:null,bidHistory:[]};
+  const a = _liveCache.a;
   a.curBidId = playerId; a.curBid = 0; a.bidLeader = null; a.bidHistory = [];
-  await saveA(a);
   document.getElementById('adm-live-search').value='';
-  await renderAdminLiveAuction();
+  renderAdminLivePlayerList();
+  renderAdminLiveSpotlight();
+  saveA(a);
 }
 
-function renderAdminLiveSpotlight(ps, tms, a){
+function renderAdminLiveSpotlight(){
+  const {ps, tms, a} = _liveCache;
   const spotEl = document.getElementById('adm-live-spotlight');
   const ctrlEl = document.getElementById('adm-live-controls');
   if(!a || !a.curBidId){
@@ -2436,10 +2465,10 @@ function renderAdminLiveSpotlight(ps, tms, a){
     `<button class="btn-sm danger" onclick="adminFinalizeUnsold()">Mark Unsold</button>`;
 }
 
-async function adminPlaceBid(teamId){
+function adminPlaceBid(teamId){
   if(!requireConn()) return;
-  const a = await getA(); if(!a || !a.curBidId) return;
-  const ps = await getP(); const tms = await getTeams();
+  const {ps, tms, a} = _liveCache;
+  if(!a || !a.curBidId) return;
   const p = ps.find(x=>x.id===a.curBidId);
   const team = tms.find(t=>t.id===teamId);
   const newBid = a.bidLeader===null ? (p.basePts||0) : a.curBid + 50;
@@ -2449,13 +2478,14 @@ async function adminPlaceBid(teamId){
   a.bidLeader = teamId;
   a.bidHistory = a.bidHistory||[];
   a.bidHistory.push({teamId, note: a.bidHistory.length===0 ? 'opens' : '+50', amt:newBid});
-  await saveA(a);
-  await renderAdminLiveAuction();
+  renderAdminLiveSpotlight();
+  saveA(a);
 }
 
-async function undoLastBid(){
+function undoLastBid(){
   if(!requireConn()) return;
-  const a = await getA(); if(!a || !a.bidHistory || !a.bidHistory.length) return;
+  const a = _liveCache.a;
+  if(!a || !a.bidHistory || !a.bidHistory.length) return;
   a.bidHistory.pop();
   if(a.bidHistory.length){
     const last = a.bidHistory[a.bidHistory.length-1];
@@ -2463,8 +2493,8 @@ async function undoLastBid(){
   } else {
     a.curBid = 0; a.bidLeader = null;
   }
-  await saveA(a);
-  await renderAdminLiveAuction();
+  renderAdminLiveSpotlight();
+  saveA(a);
 }
 
 function spawnLiveConfetti(){
@@ -2483,19 +2513,21 @@ function spawnLiveConfetti(){
 
 async function adminFinalizeSale(){
   if(!requireConn()) return;
-  const a = await getA(); if(!a || !a.curBidId || !a.bidLeader) return;
-  const ps = await getP(); const tms = await getTeams();
+  const {ps, tms, a} = _liveCache;
+  if(!a || !a.curBidId || !a.bidLeader) return;
   const p = ps.find(x=>x.id===a.curBidId);
   const team = tms.find(t=>t.id===a.bidLeader);
   try{
-    await savePlayerField(p.id, {final_pts: a.curBid, sold_to_team: team.id});
     const flash = document.getElementById('adm-live-sold-flash');
     const banner = document.getElementById('adm-live-sold-banner');
     flash.classList.remove('show'); void flash.offsetWidth; flash.classList.add('show');
     banner.innerHTML = `${p.name}<br>SOLD to <b>${team.name}</b> for <b>${a.curBid.toLocaleString()} pts</b>`;
     banner.classList.add('show');
     spawnLiveConfetti();
+    const soldBid = a.curBid;
     a.curBidId=null; a.curBid=0; a.bidLeader=null; a.bidHistory=[];
+    renderAdminLiveSpotlight();
+    await savePlayerField(p.id, {final_pts: soldBid, sold_to_team: team.id});
     await saveA(a);
     setTimeout(async ()=>{
       banner.classList.remove('show');
@@ -2507,13 +2539,14 @@ async function adminFinalizeSale(){
 
 async function adminFinalizeUnsold(){
   if(!requireConn()) return;
-  const a = await getA(); if(!a || !a.curBidId) return;
-  const ps = await getP();
+  const {ps, a} = _liveCache;
+  if(!a || !a.curBidId) return;
   const p = ps.find(x=>x.id===a.curBidId);
   try{
-    await savePlayerField(p.id, {unsold: true});
-    toast(p.name+' marked unsold.');
     a.curBidId=null; a.curBid=0; a.bidLeader=null; a.bidHistory=[];
+    renderAdminLiveSpotlight();
+    toast(p.name+' marked unsold.');
+    await savePlayerField(p.id, {unsold: true});
     await saveA(a);
     await renderAdminLiveAuction();
   } catch(e){ toast('Error: '+e.message,'error'); }
