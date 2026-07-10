@@ -72,6 +72,9 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:rgba(10,6,0,
 .nav-auction{background:rgba(255,255,255,0.05);color:rgba(255,216,77,0.7);border:1px solid rgba(255,216,77,0.2);border-bottom:3px solid rgba(255,216,77,0.35);}
 .nav-auction.active,.nav-auction:hover{background:rgba(255,216,77,0.1);color:var(--gold);border-color:rgba(255,216,77,0.45);}
 .nav-auction:active{transform:translateY(2px);border-bottom-width:1px;}
+.nav-schedule,.nav-gallery{background:rgba(255,255,255,0.05);color:rgba(255,216,77,0.7);border:1px solid rgba(255,216,77,0.2);border-bottom:3px solid rgba(255,216,77,0.35);}
+.nav-schedule.active,.nav-schedule:hover,.nav-gallery.active,.nav-gallery:hover{background:rgba(255,216,77,0.1);color:var(--gold);border-color:rgba(255,216,77,0.45);}
+.nav-schedule:active,.nav-gallery:active{transform:translateY(2px);border-bottom-width:1px;}
 .nav-admin{padding:13px 16px;background:none;border:none;border-left:1px solid var(--border);color:var(--muted);font-size:16px;cursor:pointer;transition:color .2s;}
 .nav-admin:hover{color:var(--amber);}
 
@@ -151,6 +154,9 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 .tag.female{background:rgba(200,80,120,0.16);color:#e096ab;border:1px solid rgba(200,80,120,0.35);}
 .tag.owner{background:rgba(245,194,0,0.24);color:var(--gold);border:1px solid rgba(245,194,0,0.45);font-weight:700;}
 .tag.marquee{background:rgba(180,60,180,0.2);color:#dda3ea;border:1px solid rgba(180,60,180,0.4);}
+.year-pill{background:transparent;color:var(--muted2);border:1px solid rgba(255,216,77,0.15);border-radius:5px;padding:6px 14px;font-size:12px;font-weight:600;letter-spacing:0.5px;cursor:pointer;font-family:'Space Grotesk',sans-serif;}
+.year-pill.active{background:rgba(255,216,77,0.15);color:var(--gold);border-color:rgba(255,216,77,0.4);}
+.year-pill .yp-cur{font-size:9px;opacity:0.7;margin-left:3px;}
 
 /* ── ACTION BUTTONS ── */
 .act-btns{display:flex;gap:5px;flex-wrap:wrap;}
@@ -369,6 +375,8 @@ tr:hover td{background:rgba(200,150,0,0.1);}
     <div style="display:flex;gap:6px;">
       <button class="nav-btn-3d nav-register" onclick="enterSite();setTimeout(()=>gotoPage('reg'),100)">🏸 Register</button>
       <button class="nav-btn-3d nav-auction" onclick="enterSite();setTimeout(()=>gotoPage('auction'),100)">🏆 Auction</button>
+      <button class="nav-btn-3d nav-schedule" onclick="enterSite();setTimeout(()=>gotoPage('schedule'),100)">📅 Schedule</button>
+      <button class="nav-btn-3d nav-gallery" onclick="enterSite();setTimeout(()=>gotoPage('gallery'),100)">🖼 Gallery</button>
     </div>
     <button class="nav-admin" onclick="enterSite();openAdminOverlay()" title="Admin Panel">&#9881;</button>
   </div>
@@ -398,6 +406,8 @@ tr:hover td{background:rgba(200,150,0,0.1);}
     <div style="display:flex;gap:6px;">
       <button class="nav-btn-3d nav-register active" onclick="gotoPage('reg')">🏸 Register</button>
       <button class="nav-btn-3d nav-auction" onclick="gotoPage('auction')">🏆 Auction</button>
+      <button class="nav-btn-3d nav-schedule" onclick="gotoPage('schedule')">📅 Schedule</button>
+      <button class="nav-btn-3d nav-gallery" onclick="gotoPage('gallery')">🖼 Gallery</button>
     </div>
     <button class="nav-admin" onclick="openAdminOverlay()" title="Admin Panel">&#9881;</button>
   </div>
@@ -549,11 +559,43 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 
       <!-- Tab: Auctioned Players -->
       <div id="auc-pane-auctioned" style="display:none;">
+        <div id="auc-year-strip" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;"></div>
         <div id="auctioned-teams-grid" class="auc-teams-grid"></div>
       </div>
 
       </div>
     </div>
+  </div>
+
+  <!-- ── SCHEDULE PAGE ── -->
+  <div id="page-schedule" class="page glass">
+    <button class="page-close-btn" onclick="closePage()" title="Close">&#10005;</button>
+    <div class="sec-hdr">
+      <div class="sec-dot"></div>
+      <div class="sec-title">Schedule</div>
+      <div class="sec-line"></div>
+    </div>
+    <div id="sched-year-strip" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;"></div>
+    <div class="auc-tab-bar">
+      <button class="auc-tab active" id="sched-tab-fixtures" onclick="switchSchedTab('fixtures')">Fixtures</button>
+      <button class="auc-tab" id="sched-tab-leaderboard" onclick="switchSchedTab('leaderboard')">Leaderboard</button>
+      <button class="auc-tab" id="sched-tab-rules" onclick="switchSchedTab('rules')">Rules</button>
+    </div>
+    <div id="sched-pane-fixtures"></div>
+    <div id="sched-pane-leaderboard" style="display:none;"></div>
+    <div id="sched-pane-rules" style="display:none;"></div>
+  </div>
+
+  <!-- ── GALLERY PAGE ── -->
+  <div id="page-gallery" class="page glass">
+    <button class="page-close-btn" onclick="closePage()" title="Close">&#10005;</button>
+    <div class="sec-hdr">
+      <div class="sec-dot"></div>
+      <div class="sec-title">Gallery</div>
+      <div class="sec-line"></div>
+    </div>
+    <div id="gallery-year-strip" style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;"></div>
+    <div id="gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;"></div>
   </div>
 
   <!-- ── ADMIN PANEL (full page) ── -->
@@ -562,6 +604,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <div class="sec-dot"></div>
       <div class="sec-title">Admin Dashboard</div>
       <div class="sec-line"></div>
+      <div id="season-switcher" style="display:flex;align-items:center;gap:8px;"></div>
       <button class="btn-sm danger" onclick="adminLogout()">Logout</button>
     </div>
 
@@ -580,6 +623,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <button class="auc-tab"        id="adm-tab-teams"      onclick="switchAdminTab('teams')">Teams</button>
       <button class="auc-tab"        id="adm-tab-baseprices" onclick="switchAdminTab('baseprices')">Base Prices</button>
       <button class="auc-tab"        id="adm-tab-auction"    onclick="switchAdminTab('auction')">Auction Results</button>
+      <button class="auc-tab"        id="adm-tab-gallery"    onclick="switchAdminTab('gallery')">Gallery</button>
     </div>
 
     <!-- ── SUB-TAB: PLAYERS ── -->
@@ -690,6 +734,22 @@ tr:hover td{background:rgba(200,150,0,0.1);}
           </tbody>
         </table>
       </div>
+    </div>
+
+    <div id="adm-pane-gallery" style="display:none;">
+      <div class="info-box" style="margin-bottom:1rem;">
+        Upload event photos here. Pick which year to upload to — you can add photos for a past year even while a newer season is current.
+      </div>
+      <div class="field" style="max-width:220px;margin-bottom:1rem;">
+        <label>Uploading to season</label>
+        <select id="gal-admin-year" onchange="onGalAdminYearChange()"></select>
+      </div>
+      <div id="gal-dropzone" style="border:1.5px dashed rgba(255,216,77,0.3);border-radius:8px;padding:1.5rem;text-align:center;cursor:pointer;margin-bottom:1.25rem;" onclick="document.getElementById('gal-file-input').click()">
+        <div style="color:var(--gold);font-size:13px;margin-bottom:4px;">Click to choose photos</div>
+        <div style="color:var(--muted);font-size:11px;">JPG or PNG, multiple files allowed</div>
+        <input type="file" id="gal-file-input" accept="image/*" multiple style="display:none;" onchange="handleGalleryUpload()"/>
+      </div>
+      <div id="gal-admin-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;"></div>
     </div>
 
   </div>
@@ -872,6 +932,33 @@ const SB_URL = 'https://pocetfnjboovryssiurr.supabase.co';
 const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvY2V0Zm5qYm9vdnJ5c3NpdXJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzNjMyODQsImV4cCI6MjA5NzkzOTI4NH0.oWTBYXKZpPWEGr4TkCOKEez9mdRPiwc2AXnUGgKbM5U';
 const SB_SERVICE = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvY2V0Zm5qYm9vdnJ5c3NpdXJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjM2MzI4NCwiZXhwIjoyMDk3OTM5Mjg0fQ.uNPZ4LinYeAMI3fKiyQdWRBiq-oqz5jASauNW42_t9Q';
 let _connected = false;
+let ACTIVE_SEASON = null;
+
+async function getSeasons(){
+  if(!_connected) return [];
+  const rows = await sbGet('seasons','select=*&order=year.asc');
+  return rows.map(r=>({id:r.id, year:r.year, isCurrent:r.is_current}));
+}
+async function getCurrentSeasonYear(){
+  const seasons = await getSeasons();
+  const cur = seasons.find(s=>s.isCurrent);
+  return cur ? cur.year : (seasons[seasons.length-1]?.year || null);
+}
+async function startNewSeason(year){
+  if(!requireConn()) return;
+  const yr = (year||'').trim();
+  if(!/^\d{4}$/.test(yr)){ toast('Enter a valid 4-digit year','error'); return; }
+  const seasons = await getSeasons();
+  if(seasons.find(s=>s.year===yr)){ toast('That season already exists','error'); return; }
+  try{
+    await sbUpdate('seasons',{is_current:false},`is_current=eq.true`);
+    await sbInsert('seasons',{id:'season_'+yr, year:yr, is_current:true},true);
+    ACTIVE_SEASON = yr;
+    toast('Season '+yr+' started! Everything now reads and writes to '+yr+'.','success');
+    await renderSeasonSwitcher();
+    await loadAdminPage();
+  } catch(e){ toast('Error: '+e.message,'error'); }
+}
 
 function sbHeaders(admin=false){
   const key = admin ? SB_SERVICE : SB_ANON;
@@ -985,9 +1072,10 @@ function dbToAuction(r){
 /* ══════════════════════════════════════════════
    PLAYERS API
 ══════════════════════════════════════════════ */
-async function getP(){
+async function getP(season){
   if(!_connected) return [];
-  const rows = await sbGet('players','select=*&order=registered_at.asc');
+  const s = season || ACTIVE_SEASON;
+  const rows = await sbGet('players',`select=*&season=eq.${s}&order=registered_at.asc`);
   return rows.map(dbToPlayer);
 }
 
@@ -998,32 +1086,37 @@ async function savePlayerField(id, fields){
 /* ══════════════════════════════════════════════
    TEAMS API
 ══════════════════════════════════════════════ */
-async function getTeams(){
+async function getTeams(season){
   if(!_connected) return [];
-  const rows = await sbGet('teams','select=*&order=created_at.asc');
+  const s = season || ACTIVE_SEASON;
+  const rows = await sbGet('teams',`select=*&season=eq.${s}&order=created_at.asc`);
   return rows.map(dbToTeam);
 }
 
 /* ══════════════════════════════════════════════
    BP RULES API
 ══════════════════════════════════════════════ */
-async function getBpRules(){
+async function getBpRules(season){
   if(!_connected) return [];
-  const rows = await sbGet('bp_rules','select=*&order=created_at.asc');
+  const s = season || ACTIVE_SEASON;
+  const rows = await sbGet('bp_rules',`select=*&season=eq.${s}&order=created_at.asc`);
   return rows.map(dbToBpRule);
 }
 
 /* ══════════════════════════════════════════════
    AUCTION STATE API
 ══════════════════════════════════════════════ */
-async function getA(){
+async function getA(season){
   if(!_connected) return null;
-  const rows = await sbGet('auction_state','select=*&id=eq.main');
+  const s = season || ACTIVE_SEASON;
+  const rows = await sbGet('auction_state',`select=*&id=eq.${s}`);
   return rows.length ? dbToAuction(rows[0]) : null;
 }
-async function saveA(a){
+async function saveA(a, season){
+  const s = season || ACTIVE_SEASON;
   await sbUpsert('auction_state',{
-    id:'main',
+    id: s,
+    season: s,
     pool: a.pool||[],
     cur_bid_id: a.curBidId||null,
     cur_bid: a.curBid||0,
@@ -1046,8 +1139,9 @@ function enterSite(){
   document.getElementById('page-landing').style.display='none';
   document.getElementById('site').style.display='block';
   window.scrollTo(0,0);
-  testConnection().then(ok=>{
+  testConnection().then(async ok=>{
     _connected=ok;
+    if(ok) ACTIVE_SEASON = await getCurrentSeasonYear().catch(()=>null);
     renderConnBanner();
     if(ok) toast('Connected to Supabase!','success');
     else toast('Could not connect to database. Check your network.','error');
@@ -1061,9 +1155,11 @@ function gotoPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn,.nav-btn-3d').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const idx={reg:0,auction:1}[id]??0;
+  const idx={reg:0,auction:1,schedule:2,gallery:3}[id]??0;
   document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
   if(id==='auction') initAuction();
+  if(id==='schedule') renderSchedule();
+  if(id==='gallery') renderGallery();
 }
 
 /* ══════════════════════════════════════════════
@@ -1088,7 +1184,80 @@ function showAdminPage(){
   document.getElementById('page-admin').classList.add('active');
   loadAdminPage();
 }
+async function renderSeasonSwitcher(){
+  const el = document.getElementById('season-switcher'); if(!el) return;
+  el.innerHTML = `
+    <span style="border:1px solid rgba(255,216,77,0.3);border-radius:5px;padding:6px 12px;font-size:11px;color:var(--gold);font-weight:700;letter-spacing:0.5px;">Season ${ACTIVE_SEASON||'—'}</span>
+    <button class="btn-sm" onclick="promptNewSeason()">+ New Season</button>
+  `;
+}
+function promptNewSeason(){
+  const yr = prompt('Enter the year for the new season (e.g. 2027):');
+  if(yr) startNewSeason(yr.trim());
+}
+
+async function renderYearStrip(containerId, activeYear, onPick){
+  const el = document.getElementById(containerId); if(!el) return;
+  const seasons = _connected ? await getSeasons() : [];
+  if(!seasons.length){ el.innerHTML=''; return; }
+  el.innerHTML = seasons.map(s=>`<button class="year-pill ${s.year===activeYear?'active':''}" onclick="${onPick}('${s.year}')">${s.year}${s.isCurrent?'<span class="yp-cur">(current)</span>':''}</button>`).join('');
+}
+
+/* ══════════════════════════════════════════════
+   SCHEDULE PAGE
+══════════════════════════════════════════════ */
+let SCHED_VIEW_YEAR = null;
+let SCHED_SUBTAB = 'fixtures';
+function pickSchedYear(year){ SCHED_VIEW_YEAR = year; renderSchedule(); }
+function switchSchedTab(tab){
+  SCHED_SUBTAB = tab;
+  ['fixtures','leaderboard','rules'].forEach(t=>{
+    document.getElementById('sched-pane-'+t).style.display = t===tab?'block':'none';
+    document.getElementById('sched-tab-'+t).classList.toggle('active', t===tab);
+  });
+  renderSchedulePane();
+}
+async function renderSchedule(){
+  if(!_connected){
+    document.getElementById('sched-year-strip').innerHTML='';
+    ['fixtures','leaderboard','rules'].forEach(t=>{
+      document.getElementById('sched-pane-'+t).innerHTML='<div class="empty">Connect to Supabase first.</div>';
+    });
+    return;
+  }
+  if(!SCHED_VIEW_YEAR) SCHED_VIEW_YEAR = ACTIVE_SEASON;
+  await renderYearStrip('sched-year-strip', SCHED_VIEW_YEAR, 'pickSchedYear');
+  renderSchedulePane();
+}
+function renderSchedulePane(){
+  const labels = {fixtures:'fixtures', leaderboard:'leaderboard results', rules:'tournament rules'};
+  const el = document.getElementById('sched-pane-'+SCHED_SUBTAB); if(!el) return;
+  el.innerHTML = `<div class="empty" style="padding:3rem 1rem;">No ${labels[SCHED_SUBTAB]} added for ${SCHED_VIEW_YEAR||'this season'} yet.</div>`;
+}
+
+/* ══════════════════════════════════════════════
+   GALLERY PAGE
+══════════════════════════════════════════════ */
+async function getGallery(season){
+  if(!_connected) return [];
+  const s = season || ACTIVE_SEASON;
+  const rows = await sbGet('gallery',`select=*&season=eq.${s}&order=created_at.desc`);
+  return rows.map(r=>({id:r.id, season:r.season, url:r.image_url}));
+}
+let GAL_VIEW_YEAR = null;
+function pickGalleryYear(year){ GAL_VIEW_YEAR = year; renderGallery(); }
+async function renderGallery(){
+  const el = document.getElementById('gallery-grid');
+  if(!_connected){ document.getElementById('gallery-year-strip').innerHTML=''; el.innerHTML='<div class="empty">Connect to Supabase first.</div>'; return; }
+  if(!GAL_VIEW_YEAR) GAL_VIEW_YEAR = ACTIVE_SEASON;
+  await renderYearStrip('gallery-year-strip', GAL_VIEW_YEAR, 'pickGalleryYear');
+  const photos = await getGallery(GAL_VIEW_YEAR);
+  if(!photos.length){ el.innerHTML='<div class="empty" style="grid-column:1/-1;padding:2rem;">No photos added for '+GAL_VIEW_YEAR+' yet.</div>'; return; }
+  el.innerHTML = photos.map(p=>`<div style="aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid rgba(255,216,77,0.15);"><img src="${p.url}" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/></div>`).join('');
+}
+
 async function loadAdminPage(){
+  await renderSeasonSwitcher();
   await applyBpRules().catch(()=>{});
   await renderAdminTable();
   await updateStats();
@@ -1119,6 +1288,66 @@ async function uploadPhoto(file, playerId){
   });
   if(!res.ok) throw new Error('Photo upload failed');
   return `${SB_URL}/storage/v1/object/public/player-photos/${path}`;
+}
+
+async function uploadGalleryPhoto(file, id, year){
+  const ext = file.name.split('.').pop();
+  const path = `${year}/${id}.${ext}`;
+  const res = await fetch(`${SB_URL}/storage/v1/object/gallery-photos/${path}`, {
+    method: 'POST',
+    headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON, 'Content-Type': file.type },
+    body: file
+  });
+  if(!res.ok) throw new Error('Photo upload failed');
+  return `${SB_URL}/storage/v1/object/public/gallery-photos/${path}`;
+}
+
+let GAL_ADMIN_YEAR = null;
+async function renderAdminGallery(){
+  if(!requireConn()) return;
+  const sel = document.getElementById('gal-admin-year');
+  const seasons = await getSeasons();
+  if(!GAL_ADMIN_YEAR) GAL_ADMIN_YEAR = ACTIVE_SEASON;
+  sel.innerHTML = seasons.map(s=>`<option value="${s.year}" ${s.year===GAL_ADMIN_YEAR?'selected':''}>${s.year}${s.isCurrent?' (current)':''}</option>`).join('');
+  const grid = document.getElementById('gal-admin-grid');
+  const photos = await getGallery(GAL_ADMIN_YEAR);
+  if(!photos.length){ grid.innerHTML='<div class="empty" style="grid-column:1/-1;padding:1.5rem;">No photos uploaded for '+GAL_ADMIN_YEAR+' yet.</div>'; return; }
+  grid.innerHTML = photos.map(p=>`
+    <div style="position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;border:1px solid rgba(255,216,77,0.15);">
+      <img src="${p.url}" style="width:100%;height:100%;object-fit:cover;"/>
+      <button onclick="deleteGalleryImage('${p.id}')" title="Remove" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.6);border:none;border-radius:3px;width:20px;height:20px;color:var(--red);font-size:12px;line-height:20px;cursor:pointer;">&#10005;</button>
+    </div>`).join('');
+}
+function onGalAdminYearChange(){
+  GAL_ADMIN_YEAR = document.getElementById('gal-admin-year').value;
+  renderAdminGallery();
+}
+async function handleGalleryUpload(){
+  if(!requireConn()) return;
+  const input = document.getElementById('gal-file-input');
+  const files = Array.from(input.files||[]);
+  if(!files.length) return;
+  const year = GAL_ADMIN_YEAR || ACTIVE_SEASON;
+  let okCount = 0;
+  for(const file of files){
+    const id = 'gal_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+    try{
+      const url = await uploadGalleryPhoto(file, id, year);
+      await sbInsert('gallery',{id, season:year, image_url:url});
+      okCount++;
+    } catch(e){ toast('Upload failed for '+file.name,'error'); }
+  }
+  input.value='';
+  if(okCount) toast(okCount+' photo'+(okCount!==1?'s':'')+' uploaded to '+year+'!','success');
+  await renderAdminGallery();
+}
+async function deleteGalleryImage(id){
+  if(!requireConn()) return;
+  try{
+    await sbDelete('gallery',`id=eq.${id}`);
+    await renderAdminGallery();
+    toast('Photo removed.');
+  } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
 // ── Registration tab switch ──
@@ -1181,7 +1410,8 @@ async function submitReg(e){
     await sbInsert('players',{
       id: playerId, name, flat, mobile, gender, level,
       is_owner:false, is_marquee:false, is_foreign:isForeign,
-      is_kid:false, age:null, base_pts:bpMatch?bpMatch.price:null, photo_url: photoUrl
+      is_kid:false, age:null, base_pts:bpMatch?bpMatch.price:null, photo_url: photoUrl,
+      season: ACTIVE_SEASON
     });
     toast('🏸 Registered! Welcome, '+name+'!','success');
     document.getElementById('reg-form').reset();
@@ -1255,7 +1485,8 @@ async function submitKidReg(e){
     await sbInsert('players',{
       id: playerId, name, flat, mobile, gender, level,
       is_owner:false, is_marquee:false, is_foreign:isForeign,
-      is_kid:true, age, base_pts:bpMatch?bpMatch.price:null, photo_url: photoUrl
+      is_kid:true, age, base_pts:bpMatch?bpMatch.price:null, photo_url: photoUrl,
+      season: ACTIVE_SEASON
     });
     toast('🏸 '+name+' registered in Kids category!','success');
     document.getElementById('kid-form').reset();
@@ -1519,10 +1750,10 @@ async function confirmClearAll(){
 }
 async function clearAll(){
   try{
-    await sbDelete('players','id=not.is.null');
-    await sbDelete('teams','id=not.is.null');
-    await sbDelete('bp_rules','id=not.is.null');
-    await sbUpsert('auction_state',{id:'main',pool:[],cur_bid_id:null,cur_bid:0,bid_leader:null});
+    await sbDelete('players',`season=eq.${ACTIVE_SEASON}`);
+    await sbDelete('teams',`season=eq.${ACTIVE_SEASON}`);
+    await sbDelete('bp_rules',`season=eq.${ACTIVE_SEASON}`);
+    await sbUpsert('auction_state',{id:ACTIVE_SEASON,season:ACTIVE_SEASON,pool:[],cur_bid_id:null,cur_bid:0,bid_leader:null});
     closeModal('clear-modal'); await renderAdminTable(); await updateStats();
     await renderTeams(); await renderBpRules();
     toast('All data cleared.');
@@ -1634,7 +1865,7 @@ async function saveMarqueePlayer(){
       id:'player_'+Date.now(),
       name, flat:flat||'', mobile:mobile||null, gender, level,
       is_owner:false, is_marquee:isMarquee, is_foreign:false,
-      base_pts:null, photo_url:null
+      base_pts:null, photo_url:null, season: ACTIVE_SEASON
     });
     closeModal('add-marquee-modal');
     toast(name+' added as '+(isMarquee?'Marquee Player':'regular player')+'!','success');
@@ -1661,7 +1892,7 @@ async function addTeam(){
   try{
     await sbInsert('teams',{
       id:'team_'+Date.now(), name, owner_name:'',
-      marquee_id:null, budget:BUDGET
+      marquee_id:null, budget:BUDGET, season: ACTIVE_SEASON
     });
     document.getElementById('t-name').value='';
     await renderTeams();
@@ -1691,7 +1922,7 @@ async function ownerIsPlayer(isPlayer){
         id:'player_'+Date.now(),
         name:ownerName, flat:'', mobile:null, gender:'Male', level:'Advanced',
         is_owner:true, is_marquee:false, is_foreign:false,
-        is_kid:false, age:null, base_pts:null, photo_url:null
+        is_kid:false, age:null, base_pts:null, photo_url:null, season: ACTIVE_SEASON
       });
       toast(ownerName+' registered as a player! Update their details in the Players tab.','success');
       await renderAdminTable(); await updateStats();
@@ -1841,7 +2072,7 @@ async function addBpRule(){
   const rules = await getBpRules();
   if(rules.find(r=>r.level===level&&r.foreign===foreign)){toast('A rule for this combination already exists','error');return;}
   try{
-    await sbInsert('bp_rules',{id:'bp_'+Date.now(),level,foreign_player:foreign,price});
+    await sbInsert('bp_rules',{id:'bp_'+Date.now(),level,foreign_player:foreign,price,season:ACTIVE_SEASON});
     await applyBpRules();
     document.getElementById('bp-level').value='';
     document.getElementById('bp-foreign').value='';
@@ -1956,13 +2187,14 @@ function switchAucTab(tab){
 }
 
 function switchAdminTab(tab){
-  ['players','teams','baseprices','auction'].forEach(t=>{
+  ['players','teams','baseprices','auction','gallery'].forEach(t=>{
     document.getElementById('adm-pane-'+t).style.display = t===tab?'block':'none';
     document.getElementById('adm-tab-'+t).classList.toggle('active', t===tab);
   });
   if(tab==='teams'){ renderTeams(); refreshMarqueeFormSelect(); }
   if(tab==='baseprices') renderBpRules();
   if(tab==='auction') renderAuctionResultsTable();
+  if(tab==='gallery') renderAdminGallery();
 }
 
 async function renderPreAuction(){
@@ -2000,11 +2232,16 @@ async function renderPreAuction(){
   el.innerHTML = html;
 }
 
+let AUC_VIEW_YEAR = null;
+function pickAucYear(year){ AUC_VIEW_YEAR = year; renderAuctionedPlayers(); }
 async function renderAuctionedPlayers(){
   const el=document.getElementById('auctioned-teams-grid'); if(!el) return;
   if(!_connected){el.innerHTML='<div class="empty">Connect to Supabase first.</div>';return;}
-  const ps=await getP(); const tms=await getTeams();
-  if(!tms.length){el.innerHTML='<div style="grid-column:1/-1;color:var(--muted);text-align:center;padding:2rem;font-size:13px;">No teams set up yet.</div>';return;}
+  if(!AUC_VIEW_YEAR) AUC_VIEW_YEAR = ACTIVE_SEASON;
+  await renderYearStrip('auc-year-strip', AUC_VIEW_YEAR, 'pickAucYear');
+  const viewYear = AUC_VIEW_YEAR;
+  const ps=await getP(viewYear); const tms=await getTeams(viewYear);
+  if(!tms.length){el.innerHTML='<div style="grid-column:1/-1;color:var(--muted);text-align:center;padding:2rem;font-size:13px;">No teams set up for '+viewYear+' yet.</div>';return;}
   const soldPs=ps.filter(p=>p.soldToTeam&&p.soldToTeam.trim());
   let hPts=0,hId=null;
   soldPs.forEach(p=>{if((p.finalPts||0)>hPts){hPts=p.finalPts;hId=p.id;}});
@@ -2133,8 +2370,9 @@ function toast(msg,type=''){
 }
 
 /* Auto-connect to Supabase as soon as the page loads, not only after entering the site */
-testConnection().then(ok=>{
+testConnection().then(async ok=>{
   _connected = ok;
+  if(ok) ACTIVE_SEASON = await getCurrentSeasonYear().catch(()=>null);
   renderConnBanner();
   if(ok) toast('Connected to Supabase!','success');
   else toast('Could not connect to database. Check your network.','error');
