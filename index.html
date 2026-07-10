@@ -78,6 +78,7 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:rgba(10,6,0,
 /* ── PAGE ── */
 .page{display:none;padding:2rem;max-width:700px;margin:0 auto;}
 .page.glass{background:rgba(10,6,0,0.65);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,216,77,0.12);border-radius:12px;margin:1.5rem auto;padding:2rem;position:relative;}
+#page-admin{background:rgba(10,6,0,0.65);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,216,77,0.12);border-radius:12px;margin:1.5rem auto;max-width:min(1400px,94vw);}
 .page-close-btn{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,216,77,0.2);color:rgba(255,216,77,0.6);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;line-height:1;}
 .page-close-btn:hover{background:rgba(192,80,96,0.2);border-color:var(--red);color:var(--red);}
 .page.active{display:block;}
@@ -321,7 +322,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
   /* Nav 3D buttons — smaller on mobile */
   .nav-btn-3d{padding:7px 14px!important;font-size:10px!important;letter-spacing:0.5px!important;}
   /* Glass page — full width, smaller padding */
-  .page.glass{margin:0.75rem!important;padding:1.25rem!important;border-radius:8px!important;}
+  .page.glass,#page-admin{margin:0.75rem!important;padding:1.25rem!important;border-radius:8px!important;max-width:none!important;}
   /* Form grid — single column */
   .grid{grid-template-columns:1fr;}
   /* Stats — 2 columns */
