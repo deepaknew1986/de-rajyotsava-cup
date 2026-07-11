@@ -1578,9 +1578,26 @@ async function renderAuctionResultsTable(){
   let ps; try{ ps=await getP(); }catch(e){return;}
   const tms=await getTeams();
   if(!ps.length){tb.innerHTML='<tr><td colspan="7" class="empty">No players registered yet.</td></tr>';return;}
+  function findAutoTeam(p){
+    if(p.isMarquee){
+      const t = tms.find(t=>t.marqueeId===p.id);
+      if(t) return {team:t, role:'Marquee'};
+    }
+    if(p.isOwner){
+      const t = tms.find(t=>t.ownerName && t.ownerName.toLowerCase().trim()===p.name.toLowerCase().trim());
+      if(t) return {team:t, role:'Owner'};
+    }
+    return null;
+  }
   tb.innerHTML=ps.map((p,i)=>{
     const finalHtml=`<div class="pts-cell"><input class="pts-input" type="number" value="${p.finalPts!=null?p.finalPts:''}" placeholder="—" id="fpts-${p.id}" min="0" max="99999"/><button class="pts-save" onclick="saveFinalPts('${p.id}')">✓</button></div>`;
-    const teamSel=`<select class="final-team-sel" onchange="saveSoldTeam('${p.id}',this.value)"><option value="">— Team —</option>`+tms.map(t=>`<option value="${t.id}"${p.soldToTeam===t.id?' selected':''}>${t.name}</option>`).join('')+`</select>`;
+    const autoTeam = findAutoTeam(p);
+    const teamSel = autoTeam
+      ? `<div title="Assigned via Teams tab — change it there, not here." style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(255,216,77,0.2);border-radius:4px;background:rgba(255,216,77,0.05);color:var(--muted);font-size:12px;">
+          <span style="color:var(--gold);font-weight:600;">${autoTeam.team.name}</span>
+          <span style="font-size:10px;color:var(--muted2);">(${autoTeam.role}, auto)</span>
+        </div>`
+      : `<select class="final-team-sel" onchange="saveSoldTeam('${p.id}',this.value)"><option value="">— Team —</option>`+tms.map(t=>`<option value="${t.id}"${p.soldToTeam===t.id?' selected':''}>${t.name}</option>`).join('')+`</select>`;
     const initials = p.name ? p.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase() : '?';
     const thumbHtml = p.photoUrl
       ? `<img src="${p.photoUrl}" class="player-thumb" alt="${p.name}"/>`
@@ -1932,15 +1949,24 @@ async function saveMarqueePlayer(){
   try{
     const bpRules = await getBpRules().catch(()=>[]);
     const bpMatch = matchBpRuleFor(bpRules, level, false);
+    const newId = 'player_'+Date.now();
+    const knownBasePts = bpMatch ? bpMatch.price : null;
     await sbInsert('players',{
-      id:'player_'+Date.now(),
+      id:newId,
       name, flat:flat||'', mobile:mobile||null, gender, level,
       is_owner:false, is_marquee:isMarquee, is_foreign:false,
-      base_pts:bpMatch?bpMatch.price:null, photo_url:null, season: ACTIVE_SEASON
+      base_pts:knownBasePts, photo_url:null, season: ACTIVE_SEASON
     });
     closeModal('add-marquee-modal');
     toast(name+' added as '+(isMarquee?'Marquee Player':'regular player')+'!','success');
     await renderAdminTable(); await updateStats(); await refreshMarqueeFormSelect(); await renderTeams();
+    // Guard against read-after-write lag: if the fresh render still shows this
+    // brand-new row's base points as blank, correct it using the value we
+    // already know we sent — no need to trust an immediate re-fetch.
+    if(knownBasePts!=null){
+      const input = document.getElementById('pts-'+newId);
+      if(input && !input.value){ input.value = knownBasePts; }
+    }
   } catch(e){
     if(e.message && e.message.includes('players_mobile_key')){
       toast('This mobile number is already registered!','error');
