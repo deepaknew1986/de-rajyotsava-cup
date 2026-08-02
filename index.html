@@ -2628,6 +2628,9 @@ testConnection().then(async ok=>{
 function closePage(){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn-3d').forEach(b=>b.classList.remove('active'));
+  document.getElementById('site').style.display='none';
+  document.getElementById('page-landing').style.display='flex';
+  window.scrollTo(0,0);
 }
 </script>
 </body>
