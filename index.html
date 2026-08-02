@@ -595,6 +595,11 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <div class="sec-title">Registered Players</div>
       <div class="sec-line"></div>
     </div>
+    <div class="auc-tab-bar">
+      <button class="auc-tab active" id="reg-players-tab-men" onclick="switchRegisteredTab('men')">Men's</button>
+      <button class="auc-tab" id="reg-players-tab-women" onclick="switchRegisteredTab('women')">Women's</button>
+      <button class="auc-tab" id="reg-players-tab-kids" onclick="switchRegisteredTab('kids')">Kids</button>
+    </div>
     <div id="registered-grid"></div>
   </div>
 
@@ -2481,12 +2486,24 @@ function stopRegisteredPoll(){
   if(_registeredPollTimer){ clearInterval(_registeredPollTimer); _registeredPollTimer=null; }
 }
 
+let REGISTERED_SUBTAB = 'men';
+function switchRegisteredTab(tab){
+  REGISTERED_SUBTAB = tab;
+  ['men','women','kids'].forEach(t=>{
+    document.getElementById('reg-players-tab-'+t).classList.toggle('active', t===tab);
+  });
+  renderRegisteredPlayers();
+}
+
 async function renderRegisteredPlayers(){
   const el = document.getElementById('registered-grid');
   if(!el) return;
   if(!_connected){ el.innerHTML = '<div class="empty">Connect to Supabase first.</div>'; return; }
   let ps; try{ ps = await getP(); } catch(e){ return; }
-  const eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold);
+  let eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold);
+  if(REGISTERED_SUBTAB==='kids') eligible = eligible.filter(p=>p.isKid);
+  else if(REGISTERED_SUBTAB==='men') eligible = eligible.filter(p=>!p.isKid && p.gender==='Male');
+  else if(REGISTERED_SUBTAB==='women') eligible = eligible.filter(p=>!p.isKid && p.gender==='Female');
   if(!eligible.length){ el.innerHTML = '<div class="empty" style="padding:3rem 1rem;">No players currently available for auction.</div>'; return; }
   const order = ['Advanced','Intermediate+','Intermediate','Beginner'];
   el.innerHTML = order.map(level=>{
