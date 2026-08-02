@@ -632,6 +632,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <div class="sec-title">Admin Dashboard</div>
       <div class="sec-line"></div>
       <div id="season-switcher" style="display:flex;align-items:center;gap:8px;"></div>
+      <button class="btn-sm" onclick="refreshCurrentAdminTab()" title="Refresh this tab">&#8635; Refresh</button>
       <button class="btn-sm danger" onclick="adminLogout()">Logout</button>
     </div>
 
@@ -2241,7 +2242,9 @@ async function canStart(){
   return tms.length>=3;
 }
 
+let _activeAdminTab = 'players';
 function switchAdminTab(tab){
+  _activeAdminTab = tab;
   ['players','teams','baseprices','auction','gallery','liveauction'].forEach(t=>{
     document.getElementById('adm-pane-'+t).style.display = t===tab?'block':'none';
     document.getElementById('adm-tab-'+t).classList.toggle('active', t===tab);
@@ -2251,6 +2254,16 @@ function switchAdminTab(tab){
   if(tab==='auction') renderAuctionResultsTable();
   if(tab==='gallery') renderAdminGallery();
   if(tab==='liveauction') renderAdminLiveAuction();
+}
+
+async function refreshCurrentAdminTab(){
+  await updateStats();
+  if(_activeAdminTab==='players') await renderAdminTable();
+  else if(_activeAdminTab==='teams'){ await renderTeams(); await refreshMarqueeFormSelect(); }
+  else if(_activeAdminTab==='baseprices') await renderBpRules();
+  else if(_activeAdminTab==='auction') await renderAuctionResultsTable();
+  else if(_activeAdminTab==='gallery') await renderAdminGallery();
+  else if(_activeAdminTab==='liveauction') await renderAdminLiveAuction();
 }
 
 let TEAMS_VIEW_YEAR = null;
