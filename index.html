@@ -789,9 +789,9 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         Search and spotlight a player, then click whichever team's owner raises a paddle. Owners and marquee players are excluded here since they're already assigned to a team.
       </div>
       <div class="field" style="max-width:420px;margin-bottom:1rem;">
-        <label>Live Stream (YouTube link or video ID)</label>
+        <label>Live Stream (Channel ID/link — always current — OR a specific video link/ID)</label>
         <div style="display:flex;gap:8px;">
-          <input type="text" id="adm-yt-input" placeholder="e.g. https://youtube.com/watch?v=XXXXXXXXXXX"/>
+          <input type="text" id="adm-yt-input" placeholder="Channel ID (UCxxxx…) or a video link"/>
           <button class="btn-sm success" onclick="saveLiveStream()">Save</button>
         </div>
       </div>
@@ -1138,7 +1138,8 @@ function dbToAuction(r){
     curBid: r.cur_bid||0,
     bidLeader: r.bid_leader||null,
     bidHistory: r.bid_history||[],
-    youtubeVideoId: r.youtube_video_id||null
+    youtubeVideoId: r.youtube_video_id||null,
+    youtubeChannelId: r.youtube_channel_id||null
   };
 }
 
@@ -1196,6 +1197,7 @@ async function saveA(a, season){
     bid_leader: a.bidLeader||null,
     bid_history: a.bidHistory||[],
     youtube_video_id: a.youtubeVideoId||null,
+    youtube_channel_id: a.youtubeChannelId||null,
     updated_at: new Date().toISOString()
   });
 }
@@ -2374,32 +2376,43 @@ function stopLiveAuctionPoll(){
   if(_liveAuctionPollTimer){ clearInterval(_liveAuctionPollTimer); _liveAuctionPollTimer=null; }
 }
 
-function extractYouTubeId(input){
+function extractYouTubeInput(input){
   if(!input) return null;
   const s = input.trim();
-  if(/^[a-zA-Z0-9_-]{11}$/.test(s)) return s;
-  const patterns = [
+  // Bare channel ID: always starts with "UC", 24 chars total
+  if(/^UC[a-zA-Z0-9_-]{22}$/.test(s)) return {type:'channel', id:s};
+  // Channel URL: /channel/UCxxxxxxxxxxxxxxxxxxxxxxxx
+  let m = s.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{22})/);
+  if(m) return {type:'channel', id:m[1]};
+  // Bare video ID: 11 chars
+  if(/^[a-zA-Z0-9_-]{11}$/.test(s)) return {type:'video', id:s};
+  // Video URL formats
+  const videoPatterns = [
     /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
     /youtu\.be\/([a-zA-Z0-9_-]{11})/,
     /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
     /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
   ];
-  for(const p of patterns){
-    const m = s.match(p);
-    if(m) return m[1];
+  for(const p of videoPatterns){
+    m = s.match(p);
+    if(m) return {type:'video', id:m[1]};
   }
   return null;
 }
 
-let _lastRenderedYtId = undefined;
-function renderLiveVideoEmbed(ytId){
-  if(ytId === _lastRenderedYtId) return;
-  _lastRenderedYtId = ytId;
+let _lastRenderedYt = undefined;
+function renderLiveVideoEmbed(videoId, channelId){
+  const key = videoId ? ('video:'+videoId) : channelId ? ('channel:'+channelId) : null;
+  if(key === _lastRenderedYt) return;
+  _lastRenderedYt = key;
   const wrap = document.getElementById('live-video-wrap');
   if(!wrap) return;
-  if(!ytId){ wrap.innerHTML=''; return; }
+  if(!key){ wrap.innerHTML=''; return; }
+  const src = videoId
+    ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1`
+    : `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&mute=1`;
   wrap.innerHTML = `<div style="position:relative;width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;margin-bottom:1.25rem;border:1px solid rgba(255,216,77,0.15);">
-    <iframe src="https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1" title="Live Auction Stream" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    <iframe src="${src}" title="Live Auction Stream" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
   </div>`;
 }
 
@@ -2419,7 +2432,7 @@ async function renderLiveAuctionPublic(){
     }).join('');
   }
   const a = await getA();
-  renderLiveVideoEmbed(a ? a.youtubeVideoId : null);
+  renderLiveVideoEmbed(a ? a.youtubeVideoId : null, a ? a.youtubeChannelId : null);
   const cardEl = document.getElementById('live-spotlight-card');
   if(!cardEl) return;
   if(!a || !a.curBidId){
@@ -2481,7 +2494,7 @@ async function renderAdminLiveAuction(){
   _liveCache.tms = await getTeams();
   _liveCache.a = (await getA()) || {pool:[],curBidId:null,curBid:0,bidLeader:null,bidHistory:[]};
   const ytInput = document.getElementById('adm-yt-input');
-  if(ytInput) ytInput.value = _liveCache.a.youtubeVideoId || '';
+  if(ytInput) ytInput.value = _liveCache.a.youtubeVideoId || _liveCache.a.youtubeChannelId || '';
   renderAdminLivePlayerList();
   renderAdminLiveSpotlight();
 }
@@ -2489,14 +2502,15 @@ async function renderAdminLiveAuction(){
 async function saveLiveStream(){
   if(!requireConn()) return;
   const raw = document.getElementById('adm-yt-input').value.trim();
-  const id = extractYouTubeId(raw);
-  if(raw && !id){ toast('Could not read a YouTube video ID from that link','error'); return; }
+  const parsed = extractYouTubeInput(raw);
+  if(raw && !parsed){ toast('Could not read a YouTube video or channel ID from that. Use the video Share link, or your Channel ID from About → Share channel.','error'); return; }
   const a = _liveCache.a;
-  a.youtubeVideoId = id || null;
+  a.youtubeVideoId = parsed && parsed.type==='video' ? parsed.id : null;
+  a.youtubeChannelId = parsed && parsed.type==='channel' ? parsed.id : null;
   try{
     await saveA(a);
-    toast(id ? 'Live stream set!' : 'Live stream cleared.', 'success');
-    document.getElementById('adm-yt-input').value = id || '';
+    toast(parsed ? (parsed.type==='channel' ? 'Live stream set — will always show whatever is currently live on that channel!' : 'Live stream set!') : 'Live stream cleared.', 'success');
+    document.getElementById('adm-yt-input').value = parsed ? parsed.id : '';
   } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
