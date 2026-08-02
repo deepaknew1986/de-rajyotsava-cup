@@ -72,9 +72,9 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:rgba(10,6,0,
 .nav-auction{background:rgba(255,255,255,0.05);color:rgba(255,216,77,0.7);border:1px solid rgba(255,216,77,0.2);border-bottom:3px solid rgba(255,216,77,0.35);}
 .nav-auction.active,.nav-auction:hover{background:rgba(255,216,77,0.1);color:var(--gold);border-color:rgba(255,216,77,0.45);}
 .nav-auction:active{transform:translateY(2px);border-bottom-width:1px;}
-.nav-schedule,.nav-gallery,.nav-teams{background:rgba(255,255,255,0.05);color:rgba(255,216,77,0.7);border:1px solid rgba(255,216,77,0.2);border-bottom:3px solid rgba(255,216,77,0.35);}
-.nav-schedule.active,.nav-schedule:hover,.nav-gallery.active,.nav-gallery:hover,.nav-teams.active,.nav-teams:hover{background:rgba(255,216,77,0.1);color:var(--gold);border-color:rgba(255,216,77,0.45);}
-.nav-schedule:active,.nav-gallery:active,.nav-teams:active{transform:translateY(2px);border-bottom-width:1px;}
+.nav-schedule,.nav-gallery,.nav-teams,.nav-registered{background:rgba(255,255,255,0.05);color:rgba(255,216,77,0.7);border:1px solid rgba(255,216,77,0.2);border-bottom:3px solid rgba(255,216,77,0.35);}
+.nav-schedule.active,.nav-schedule:hover,.nav-gallery.active,.nav-gallery:hover,.nav-teams.active,.nav-teams:hover,.nav-registered.active,.nav-registered:hover{background:rgba(255,216,77,0.1);color:var(--gold);border-color:rgba(255,216,77,0.45);}
+.nav-schedule:active,.nav-gallery:active,.nav-teams:active,.nav-registered:active{transform:translateY(2px);border-bottom-width:1px;}
 .nav-admin{padding:13px 16px;background:none;border:none;border-left:1px solid var(--border);color:var(--muted);font-size:16px;cursor:pointer;transition:color .2s;}
 .nav-admin:hover{color:var(--amber);}
 
@@ -394,9 +394,10 @@ tr:hover td{background:rgba(200,150,0,0.1);}
   </div>
   <!-- 3D nav buttons on landing -->
   <div style="position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(10,6,0,0.42);border-bottom:1px solid rgba(255,216,77,0.12);height:52px;backdrop-filter:blur(4px);flex-shrink:0;">
-    <div style="display:flex;gap:6px;">
+    <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <button class="nav-btn-3d nav-register" onclick="enterSite();setTimeout(()=>gotoPage('reg'),100)">🏸 Register</button>
       <button class="nav-btn-3d nav-auction" onclick="enterSite();setTimeout(()=>gotoPage('auction'),100)">🏆 Live Auction</button>
+      <button class="nav-btn-3d nav-registered" onclick="enterSite();setTimeout(()=>gotoPage('registered'),100)">📋 Registered Players</button>
       <button class="nav-btn-3d nav-teams" onclick="enterSite();setTimeout(()=>gotoPage('teams'),100)">🛡 Teams</button>
       <button class="nav-btn-3d nav-schedule" onclick="enterSite();setTimeout(()=>gotoPage('schedule'),100)">📅 Schedule</button>
       <button class="nav-btn-3d nav-gallery" onclick="enterSite();setTimeout(()=>gotoPage('gallery'),100)">🖼 Gallery</button>
@@ -426,9 +427,10 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 
   <!-- Nav -->
   <div class="nav" style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;background:rgba(10,6,0,0.5);border-bottom:1px solid rgba(255,216,77,0.15);height:52px;backdrop-filter:blur(4px);">
-    <div style="display:flex;gap:6px;">
+    <div style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <button class="nav-btn-3d nav-register active" onclick="gotoPage('reg')">🏸 Register</button>
       <button class="nav-btn-3d nav-auction" onclick="gotoPage('auction')">🏆 Live Auction</button>
+      <button class="nav-btn-3d nav-registered" onclick="gotoPage('registered')">📋 Registered Players</button>
       <button class="nav-btn-3d nav-teams" onclick="gotoPage('teams')">🛡 Teams</button>
       <button class="nav-btn-3d nav-schedule" onclick="gotoPage('schedule')">📅 Schedule</button>
       <button class="nav-btn-3d nav-gallery" onclick="gotoPage('gallery')">🖼 Gallery</button>
@@ -457,7 +459,15 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <form id="reg-form" onsubmit="submitReg(event)">
         <div class="grid">
           <div class="field"><label>Full Name *</label><input id="f-name" type="text" placeholder="Rajesh Kumar"/></div>
-          <div class="field"><label>Flat / Unit No. *</label><input id="f-flat" type="text" placeholder="B-204"/></div>
+          <div class="field">
+            <label>Player Category *</label>
+            <select id="f-foreign" onchange="filterAdultLevelOptions()">
+              <option value="">— Select —</option>
+              <option value="N">No (DE Apartments Resident)</option>
+              <option value="Y">Yes (Outside DE Apartments)</option>
+            </select>
+          </div>
+          <div class="field" id="f-flat-field"><label id="f-flat-label">Flat / Unit No. *</label><input id="f-flat" type="text" placeholder="B-204"/></div>
           <div class="field"><label>Mobile Number *</label><input id="f-mobile" type="tel" placeholder="9876543210"/></div>
           <div class="field">
             <label>Gender *</label>
@@ -474,14 +484,6 @@ tr:hover td{background:rgba(200,150,0,0.1);}
               <option value="Intermediate+">Intermediate+</option>
               <option value="Intermediate">Intermediate</option>
               <option value="Beginner">Beginner</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Foreign Player *</label>
-            <select id="f-foreign">
-              <option value="">— Select —</option>
-              <option value="N">No (DE Apartments Resident)</option>
-              <option value="Y">Yes (Outside DE Apartments)</option>
             </select>
           </div>
         </div>
@@ -583,6 +585,17 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <div id="live-spotlight-card"></div>
       </div>
     </div>
+  </div>
+
+  <!-- ── REGISTERED PLAYERS PAGE ── -->
+  <div id="page-registered" class="page glass">
+    <button class="page-close-btn" onclick="closePage()" title="Close">&#10005;</button>
+    <div class="sec-hdr">
+      <div class="sec-dot"></div>
+      <div class="sec-title">Registered Players</div>
+      <div class="sec-line"></div>
+    </div>
+    <div id="registered-grid"></div>
   </div>
 
   <!-- ── TEAMS PAGE ── -->
@@ -876,6 +889,14 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <select id="mq-gender" onchange="validateAddPlayerForm()">
           <option value="">— Select —</option>
           <option>Male</option><option>Female</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Player Category *</label>
+        <select id="mq-foreign" onchange="filterAddPlayerLevelOptions();validateAddPlayerForm()">
+          <option value="">— Select —</option>
+          <option value="N">No (Local)</option>
+          <option value="Y">Yes (Foreign)</option>
         </select>
       </div>
       <div class="field">
@@ -1232,10 +1253,12 @@ function gotoPage(id){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn,.nav-btn-3d').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
-  const idx={reg:0,auction:1,teams:2,schedule:3,gallery:4}[id]??0;
+  const idx={reg:0,auction:1,registered:2,teams:3,schedule:4,gallery:5}[id]??0;
   document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
   if(id!=='auction') stopLiveAuctionPoll();
+  if(id!=='registered') stopRegisteredPoll();
   if(id==='auction') initAuction();
+  if(id==='registered'){ renderRegisteredPlayers(); startRegisteredPoll(); }
   if(id==='teams') renderTeamsPage();
   if(id==='schedule') renderSchedule();
   if(id==='gallery') renderGallery();
@@ -1443,6 +1466,43 @@ function switchRegTab(tab){
   });
 }
 
+function filterAdultLevelOptions(){
+  const foreign = document.getElementById('f-foreign').value;
+  const levelSel = document.getElementById('f-level');
+  const cur = levelSel.value;
+  if(foreign==='Y'){
+    levelSel.innerHTML = `
+      <option value="">— Select your level —</option>
+      <option value="Advanced">Advanced</option>
+      <option value="Intermediate+">Intermediate+</option>`;
+    if(cur!=='Advanced' && cur!=='Intermediate+') levelSel.value = '';
+    else levelSel.value = cur;
+  } else {
+    levelSel.innerHTML = `
+      <option value="">— Select your level —</option>
+      <option value="Advanced">Advanced</option>
+      <option value="Intermediate+">Intermediate+</option>
+      <option value="Intermediate">Intermediate</option>
+      <option value="Beginner">Beginner</option>`;
+    levelSel.value = cur;
+  }
+  const flatInput = document.getElementById('f-flat');
+  const flatLabel = document.getElementById('f-flat-label');
+  const flatField = document.getElementById('f-flat-field');
+  if(foreign==='Y'){
+    flatInput.disabled = true;
+    flatInput.value = '';
+    flatInput.placeholder = 'Not applicable';
+    if(flatLabel) flatLabel.textContent = 'Flat / Unit No. (N/A for foreign players)';
+    if(flatField) flatField.style.opacity = '0.5';
+  } else {
+    flatInput.disabled = false;
+    flatInput.placeholder = 'B-204';
+    if(flatLabel) flatLabel.textContent = 'Flat / Unit No. *';
+    if(flatField) flatField.style.opacity = '1';
+  }
+}
+
 // ── Validation helpers ──
 function validateName(name){ return name.length>=3 && /^[a-zA-Z\s.'-]+$/.test(name); }
 function validateMobile(mobile){
@@ -1469,7 +1529,7 @@ async function submitReg(e){
   // Validations
   if(!name){ toast('Full name is required','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
   if(!validateName(name)){ toast('Name must be at least 3 characters and contain letters only','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
-  if(!flat){ toast('Flat / Unit number is required','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+  if(!flat && !isForeign){ toast('Flat / Unit number is required','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
   if(!mobile){ toast('Mobile number is required','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
   if(!validateMobile(mobile)){ toast('Mobile number must be exactly 10 digits (numbers only)','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
   if(!gender){ toast('Please select your gender','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
@@ -1499,6 +1559,7 @@ async function submitReg(e){
     });
     toast('🏸 Registered! Welcome, '+name+'!','success');
     document.getElementById('reg-form').reset();
+    filterAdultLevelOptions();
     document.getElementById('photo-preview-wrap').innerHTML='<span id="photo-placeholder-icon">&#128247;</span>';
   } catch(err){
     if(err.message && err.message.includes('players_mobile_key')){
@@ -1620,7 +1681,7 @@ async function renderAuctionResultsTable(){
     return`<tr>
       <td style="color:var(--muted)">${i+1}</td>
       <td>${thumbHtml}</td>
-      <td style="font-weight:500;color:#e8c060">${p.name}</td>
+      <td style="font-weight:500;color:#e8c060">${p.name}${p.isForeign?' &#9992;':''}</td>
       <td>${p.flat}</td>
       <td>${lvlTag(p.level)}</td>
       <td style="color:var(--gold);font-family:'Cinzel',serif;">${p.basePts!=null?p.basePts:'—'}</td>
@@ -1660,7 +1721,7 @@ async function renderAdminTable(){
     return`<tr>
       <td style="color:var(--muted);width:30px;">${i+1}</td>
       <td style="width:46px;text-align:center;">${thumbHtml}</td>
-      <td style="font-weight:500;color:#e8c060">${p.name}</td>
+      <td style="font-weight:500;color:#e8c060">${p.name}${isForeign?' &#9992;':''}</td>
       <td>${p.flat}</td>
       <td style="font-size:11px">${p.mobile}</td>
       <td><span class="tag ${p.gender==='Male'?'male':'female'}">${p.gender}</span></td>
@@ -1886,6 +1947,13 @@ async function openAddMarqueeModal(){
   document.getElementById('mq-flat').value='';
   document.getElementById('mq-mobile').value='';
   document.getElementById('mq-gender').value='';
+  document.getElementById('mq-foreign').value='';
+  document.getElementById('mq-level').innerHTML = `
+    <option value="">— Select —</option>
+    <option value="Advanced">Advanced</option>
+    <option value="Intermediate+">Intermediate+</option>
+    <option value="Intermediate">Intermediate</option>
+    <option value="Beginner">Beginner</option>`;
   document.getElementById('mq-level').value='';
   document.getElementById('mq-is-marquee').value='';
   // Reset field error states and button
@@ -1905,12 +1973,34 @@ function toggleMqTeam(val){
   // Team assignment removed from Add Player modal per design
 }
 
+function filterAddPlayerLevelOptions(){
+  const foreign = document.getElementById('mq-foreign').value;
+  const levelSel = document.getElementById('mq-level');
+  const cur = levelSel.value;
+  if(foreign==='Y'){
+    levelSel.innerHTML = `
+      <option value="">— Select —</option>
+      <option value="Advanced">Advanced</option>
+      <option value="Intermediate+">Intermediate+</option>`;
+    levelSel.value = (cur==='Advanced'||cur==='Intermediate+') ? cur : '';
+  } else {
+    levelSel.innerHTML = `
+      <option value="">— Select —</option>
+      <option value="Advanced">Advanced</option>
+      <option value="Intermediate+">Intermediate+</option>
+      <option value="Intermediate">Intermediate</option>
+      <option value="Beginner">Beginner</option>`;
+    levelSel.value = cur;
+  }
+}
+
 function validateAddPlayerForm(){
   const fields = [
     {id:'mq-name',    check: v => v.trim().length >= 1},
     {id:'mq-flat',    check: v => v.trim().length >= 1},
     {id:'mq-mobile',  check: v => /^\d{10}$/.test(v.trim())},
     {id:'mq-gender',  check: v => v !== ''},
+    {id:'mq-foreign', check: v => v !== ''},
     {id:'mq-level',   check: v => v !== ''},
     {id:'mq-is-marquee', check: v => v !== ''},
   ];
@@ -1949,12 +2039,15 @@ async function saveMarqueePlayer(){
   const flat      = document.getElementById('mq-flat').value.trim();
   const mobile    = document.getElementById('mq-mobile').value.trim();
   const gender    = document.getElementById('mq-gender').value;
+  const foreign   = document.getElementById('mq-foreign').value;
+  const isForeign = foreign === 'Y';
   const level     = document.getElementById('mq-level').value;
   const mqVal = document.getElementById('mq-is-marquee').value;
   if(!mqVal){toast('Please select if this player is a Marquee player or not','error');return;}
   const isMarquee = mqVal === 'yes';
   if(!name){toast('Player name is required','error');return;}
   if(!gender){toast('Please select gender','error');return;}
+  if(!foreign){toast('Please select the player category','error');return;}
   if(!level){toast('Please select proficiency level','error');return;}
   if(isMarquee){
     const ps = await getP();
@@ -1963,13 +2056,13 @@ async function saveMarqueePlayer(){
   }
   try{
     const bpRules = await getBpRules().catch(()=>[]);
-    const bpMatch = matchBpRuleFor(bpRules, level, false);
+    const bpMatch = matchBpRuleFor(bpRules, level, isForeign);
     const newId = 'player_'+Date.now();
     const knownBasePts = bpMatch ? bpMatch.price : null;
     await sbInsert('players',{
       id:newId,
       name, flat:flat||'', mobile:mobile||null, gender, level,
-      is_owner:false, is_marquee:isMarquee, is_foreign:false,
+      is_owner:false, is_marquee:isMarquee, is_foreign:isForeign,
       base_pts:knownBasePts, photo_url:null, season: ACTIVE_SEASON
     });
     closeModal('add-marquee-modal');
@@ -2333,8 +2426,8 @@ async function renderTeamsPage(){
       ...auto.map(({p,role,pts})=>`<div class="auc-player-row">
         <div class="auc-pl-photo">${p.photoUrl?`<img src="${p.photoUrl}" alt="${p.name}"/>`:'&#128100;'}</div>
         <div style="flex:1;min-width:0;">
-          <div class="auc-pl-name">${p.name}</div>
-          <div class="auc-pl-role">${role} · ${p.level}${p.isForeign?' · Foreign':''}</div>
+          <div class="auc-pl-name">${p.name}${p.isForeign?' &#9992;':''}</div>
+          <div class="auc-pl-role">${role} · ${p.level}</div>
         </div>
         <div class="auc-pl-prices">
           <div class="auc-pl-base">${pts} pts</div>
@@ -2346,8 +2439,8 @@ async function renderTeamsPage(){
         return`<div class="auc-player-row ${hi?'highest':''}">
           <div class="auc-pl-photo">${p.photoUrl?`<img src="${p.photoUrl}" alt="${p.name}"/>`:'&#128100;'}</div>
           <div style="flex:1;min-width:0;">
-            <div class="auc-pl-name">${p.name}${hi?'<span class="highest-badge">&#9733; Top Bid</span>':''}</div>
-            <div class="auc-pl-role">Auctioned · ${p.level}${p.isForeign?' · Foreign':''}</div>
+            <div class="auc-pl-name">${p.name}${p.isForeign?' &#9992;':''}${hi?'<span class="highest-badge">&#9733; Top Bid</span>':''}</div>
+            <div class="auc-pl-role">Auctioned · ${p.level}</div>
           </div>
           <div class="auc-pl-prices">
             <div class="auc-pl-base">Base: ${p.basePts??'—'}</div>
@@ -2374,6 +2467,49 @@ function startLiveAuctionPoll(){
 }
 function stopLiveAuctionPoll(){
   if(_liveAuctionPollTimer){ clearInterval(_liveAuctionPollTimer); _liveAuctionPollTimer=null; }
+}
+
+/* ══════════════════════════════════════════════
+   REGISTERED PLAYERS PAGE
+══════════════════════════════════════════════ */
+let _registeredPollTimer = null;
+function startRegisteredPoll(){
+  stopRegisteredPoll();
+  _registeredPollTimer = setInterval(renderRegisteredPlayers, 3000);
+}
+function stopRegisteredPoll(){
+  if(_registeredPollTimer){ clearInterval(_registeredPollTimer); _registeredPollTimer=null; }
+}
+
+async function renderRegisteredPlayers(){
+  const el = document.getElementById('registered-grid');
+  if(!el) return;
+  if(!_connected){ el.innerHTML = '<div class="empty">Connect to Supabase first.</div>'; return; }
+  let ps; try{ ps = await getP(); } catch(e){ return; }
+  const eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold);
+  if(!eligible.length){ el.innerHTML = '<div class="empty" style="padding:3rem 1rem;">No players currently available for auction.</div>'; return; }
+  const order = ['Advanced','Intermediate+','Intermediate','Beginner'];
+  el.innerHTML = order.map(level=>{
+    const group = eligible.filter(p=>p.level===level).sort((a,b)=>a.name.localeCompare(b.name));
+    if(!group.length) return '';
+    return `<div class="level-group">
+      <div class="level-group-header">${lvlTag(level)}<span class="level-group-count">${group.length} player${group.length!==1?'s':''}</span></div>
+      <div class="pre-auc-grid">
+        ${group.map(p=>{
+          const initials = p.name ? p.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase() : '?';
+          const photoHtml = p.photoUrl ? `<img src="${p.photoUrl}" alt="${p.name}"/>` : initials;
+          return `<div class="pre-auc-card">
+            <div class="pre-auc-photo">${photoHtml}</div>
+            <div>
+              <div class="pre-auc-name">${p.name}${p.isForeign?' &#9992;':''}</div>
+              <div class="pre-auc-flat">${p.flat}</div>
+              <div class="pre-auc-pts">${p.basePts!=null?p.basePts+' pts':'—'}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 function extractYouTubeInput(input){
