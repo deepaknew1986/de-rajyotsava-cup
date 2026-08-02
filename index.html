@@ -575,6 +575,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <div class="sec-title">Live Auction</div>
         <div class="sec-line"></div>
       </div>
+      <div id="live-video-wrap"></div>
       <div id="live-team-budgets" style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;"></div>
       <div id="live-spotlight-wrap" style="position:relative;">
         <div class="sold-flash" id="live-sold-flash"></div>
@@ -786,6 +787,13 @@ tr:hover td{background:rgba(200,150,0,0.1);}
     <div id="adm-pane-liveauction" style="display:none;">
       <div class="info-box" style="margin-bottom:1rem;">
         Search and spotlight a player, then click whichever team's owner raises a paddle. Owners and marquee players are excluded here since they're already assigned to a team.
+      </div>
+      <div class="field" style="max-width:420px;margin-bottom:1rem;">
+        <label>Live Stream (YouTube link or video ID)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="adm-yt-input" placeholder="e.g. https://youtube.com/watch?v=XXXXXXXXXXX"/>
+          <button class="btn-sm success" onclick="saveLiveStream()">Save</button>
+        </div>
       </div>
       <div class="field" style="max-width:300px;margin-bottom:0.75rem;">
         <label>Search players</label>
@@ -1129,7 +1137,8 @@ function dbToAuction(r){
     curBidId: r.cur_bid_id||null,
     curBid: r.cur_bid||0,
     bidLeader: r.bid_leader||null,
-    bidHistory: r.bid_history||[]
+    bidHistory: r.bid_history||[],
+    youtubeVideoId: r.youtube_video_id||null
   };
 }
 
@@ -1186,6 +1195,7 @@ async function saveA(a, season){
     cur_bid: a.curBid||0,
     bid_leader: a.bidLeader||null,
     bid_history: a.bidHistory||[],
+    youtube_video_id: a.youtubeVideoId||null,
     updated_at: new Date().toISOString()
   });
 }
@@ -2364,6 +2374,35 @@ function stopLiveAuctionPoll(){
   if(_liveAuctionPollTimer){ clearInterval(_liveAuctionPollTimer); _liveAuctionPollTimer=null; }
 }
 
+function extractYouTubeId(input){
+  if(!input) return null;
+  const s = input.trim();
+  if(/^[a-zA-Z0-9_-]{11}$/.test(s)) return s;
+  const patterns = [
+    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
+    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/
+  ];
+  for(const p of patterns){
+    const m = s.match(p);
+    if(m) return m[1];
+  }
+  return null;
+}
+
+let _lastRenderedYtId = undefined;
+function renderLiveVideoEmbed(ytId){
+  if(ytId === _lastRenderedYtId) return;
+  _lastRenderedYtId = ytId;
+  const wrap = document.getElementById('live-video-wrap');
+  if(!wrap) return;
+  if(!ytId){ wrap.innerHTML=''; return; }
+  wrap.innerHTML = `<div style="position:relative;width:100%;aspect-ratio:16/9;border-radius:8px;overflow:hidden;margin-bottom:1.25rem;border:1px solid rgba(255,216,77,0.15);">
+    <iframe src="https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1" title="Live Auction Stream" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+  </div>`;
+}
+
 async function renderLiveAuctionPublic(){
   if(!_connected) return;
   const ps = await getP();
@@ -2380,6 +2419,7 @@ async function renderLiveAuctionPublic(){
     }).join('');
   }
   const a = await getA();
+  renderLiveVideoEmbed(a ? a.youtubeVideoId : null);
   const cardEl = document.getElementById('live-spotlight-card');
   if(!cardEl) return;
   if(!a || !a.curBidId){
@@ -2440,8 +2480,24 @@ async function renderAdminLiveAuction(){
   _liveCache.ps = await getP();
   _liveCache.tms = await getTeams();
   _liveCache.a = (await getA()) || {pool:[],curBidId:null,curBid:0,bidLeader:null,bidHistory:[]};
+  const ytInput = document.getElementById('adm-yt-input');
+  if(ytInput) ytInput.value = _liveCache.a.youtubeVideoId || '';
   renderAdminLivePlayerList();
   renderAdminLiveSpotlight();
+}
+
+async function saveLiveStream(){
+  if(!requireConn()) return;
+  const raw = document.getElementById('adm-yt-input').value.trim();
+  const id = extractYouTubeId(raw);
+  if(raw && !id){ toast('Could not read a YouTube video ID from that link','error'); return; }
+  const a = _liveCache.a;
+  a.youtubeVideoId = id || null;
+  try{
+    await saveA(a);
+    toast(id ? 'Live stream set!' : 'Live stream cleared.', 'success');
+    document.getElementById('adm-yt-input').value = id || '';
+  } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
 function renderAdminLivePlayerList(){
