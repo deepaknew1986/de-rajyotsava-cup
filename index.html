@@ -95,6 +95,8 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:rgba(10,6,0,
 .badge-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite;}
 .badge span{font-size:10px;color:var(--green);letter-spacing:1px;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+@keyframes adminRefreshSpin{to{transform:rotate(360deg);}}
+.refresh-spin{display:inline-block;animation:adminRefreshSpin .7s linear infinite;}
 
 /* ── FORM ── */
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
@@ -632,7 +634,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <div class="sec-title">Admin Dashboard</div>
       <div class="sec-line"></div>
       <div id="season-switcher" style="display:flex;align-items:center;gap:8px;"></div>
-      <button class="btn-sm" onclick="refreshCurrentAdminTab()" title="Refresh this tab">&#8635; Refresh</button>
+      <button class="btn-sm" id="admin-refresh-btn" onclick="refreshCurrentAdminTab()" title="Refresh this tab"><span id="admin-refresh-icon">&#8635;</span> Refresh</button>
       <button class="btn-sm danger" onclick="adminLogout()">Logout</button>
     </div>
 
@@ -2257,13 +2259,26 @@ function switchAdminTab(tab){
 }
 
 async function refreshCurrentAdminTab(){
-  await updateStats();
-  if(_activeAdminTab==='players') await renderAdminTable();
-  else if(_activeAdminTab==='teams'){ await renderTeams(); await refreshMarqueeFormSelect(); }
-  else if(_activeAdminTab==='baseprices') await renderBpRules();
-  else if(_activeAdminTab==='auction') await renderAuctionResultsTable();
-  else if(_activeAdminTab==='gallery') await renderAdminGallery();
-  else if(_activeAdminTab==='liveauction') await renderAdminLiveAuction();
+  const btn = document.getElementById('admin-refresh-btn');
+  const icon = document.getElementById('admin-refresh-icon');
+  if(btn) btn.disabled = true;
+  if(icon){ icon.classList.add('refresh-spin'); icon.innerHTML = '&#8635;'; }
+  try{
+    await updateStats();
+    if(_activeAdminTab==='players') await renderAdminTable();
+    else if(_activeAdminTab==='teams'){ await renderTeams(); await refreshMarqueeFormSelect(); }
+    else if(_activeAdminTab==='baseprices') await renderBpRules();
+    else if(_activeAdminTab==='auction') await renderAuctionResultsTable();
+    else if(_activeAdminTab==='gallery') await renderAdminGallery();
+    else if(_activeAdminTab==='liveauction') await renderAdminLiveAuction();
+    if(icon){ icon.classList.remove('refresh-spin'); icon.innerHTML = '&#10003;'; }
+  } catch(e){
+    if(icon){ icon.classList.remove('refresh-spin'); icon.innerHTML = '&#10005;'; }
+  }
+  setTimeout(()=>{
+    if(icon) icon.innerHTML = '&#8635;';
+    if(btn) btn.disabled = false;
+  }, 1200);
 }
 
 let TEAMS_VIEW_YEAR = null;
