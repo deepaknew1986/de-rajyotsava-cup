@@ -2618,7 +2618,7 @@ async function renderLiveAuctionPublic(){
   const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   cardEl.innerHTML = `
     <div style="text-align:center;padding:1.5rem 1rem;">
-      <div style="width:220px;height:220px;border-radius:50%;background:rgba(255,216,77,0.1);border:3px solid rgba(255,216,77,0.35);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:64px;color:var(--gold);margin:0 auto 14px;overflow:hidden;box-shadow:0 0 30px rgba(255,216,77,0.15);">
+      <div style="width:300px;height:300px;border-radius:50%;background:rgba(255,216,77,0.1);border:3px solid rgba(255,216,77,0.35);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:84px;color:var(--gold);margin:0 auto 14px;overflow:hidden;box-shadow:0 0 30px rgba(255,216,77,0.15);">
         ${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;image-rendering:high-quality;"/>`:initials}
       </div>
       <div style="font-family:'Cinzel',serif;font-weight:700;font-size:26px;color:var(--gold);margin-bottom:4px;">${p.name}</div>
@@ -2689,14 +2689,13 @@ async function saveLiveStream(){
 
 function renderAdminLivePlayerList(){
   const {ps, a} = _liveCache;
-  const eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold && p.gender==='Male' && !p.isKid);
+  const eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold && p.gender==='Male' && !p.isKid && p.id!==(a&&a.curBidId));
   const listEl = document.getElementById('adm-live-player-list');
   listEl.innerHTML = eligible.length ? eligible.map(p=>{
-    const disabled = a && a.curBidId===p.id;
-    return `<div class="pl-item" onclick="${disabled?'':`adminSelectPlayer('${p.id}')`}" style="${disabled?'opacity:0.4;cursor:default;':''}" data-name="${p.name.toLowerCase()}">
+    return `<div class="pl-item" onclick="adminSelectPlayer('${p.id}')" data-name="${p.name.toLowerCase()}">
       <span class="pl-name">${p.name}</span><span class="pl-badge">${p.basePts??'—'} pts</span>
     </div>`;
-  }).join('') : '<div class="empty" style="padding:1rem;">No players left to auction — everyone remaining is either sold, unsold, or already an owner/marquee.</div>';
+  }).join('') : '<div class="empty" style="padding:1rem;">No players left to auction — everyone remaining is either sold, unsold, currently spotlighted, or already an owner/marquee.</div>';
   renderUnsoldPlayersList();
 }
 
@@ -2786,7 +2785,20 @@ function renderAdminLiveSpotlight(){
   ctrlEl.innerHTML = teamBtns +
     `<button class="btn-sm" ${undoDisabled} onclick="undoLastBid()">&#8630; Undo Last Bid</button>` +
     `<button class="btn-sm success" ${soldDisabled} onclick="adminFinalizeSale()">Mark Sold</button>` +
-    `<button class="btn-sm danger" onclick="adminFinalizeUnsold()">Mark Unsold</button>`;
+    `<button class="btn-sm danger" onclick="adminFinalizeUnsold()">Mark Unsold</button>` +
+    `<button class="btn-sm" onclick="cancelPlayerSelection()">&#10005; Cancel Selection</button>`;
+}
+
+async function cancelPlayerSelection(){
+  if(!requireConn()) return;
+  const a = _liveCache.a;
+  if(!a || !a.curBidId) return;
+  a.curBidId = null; a.curBid = 0; a.bidLeader = null; a.bidHistory = [];
+  try{
+    await saveA(a);
+    toast('Selection cancelled. Player is back in the list.');
+    await renderAdminLiveAuction();
+  } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
 function adminPlaceBid(teamId){
