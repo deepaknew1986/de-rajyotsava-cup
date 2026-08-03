@@ -489,7 +489,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         </div>
         <!-- Photo Upload -->
         <div class="field full" style="margin-top:8px;">
-          <label>Profile Photo (optional)</label>
+          <label>Profile Photo *</label>
           <div class="photo-upload-wrap" style="flex-direction:row;align-items:center;gap:16px;justify-content:flex-start;">
             <div class="photo-preview-placeholder" id="photo-preview-wrap" onclick="document.getElementById('f-photo').click()">
               <span id="photo-placeholder-icon">&#128247;</span>
@@ -543,7 +543,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         </div>
         <!-- Photo Upload -->
         <div class="field full" style="margin-top:8px;">
-          <label>Profile Photo (optional)</label>
+          <label>Profile Photo *</label>
           <div class="photo-upload-wrap" style="flex-direction:row;align-items:center;gap:16px;justify-content:flex-start;">
             <div class="photo-preview-placeholder" id="k-photo-preview-wrap" onclick="document.getElementById('k-photo').click()">
               <span>&#128247;</span>
@@ -1540,19 +1540,23 @@ async function submitReg(e){
   if(!gender){ toast('Please select your gender','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
   if(!level){ toast('Please select your proficiency level','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
   if(!foreign){ toast('Please select if you are a foreign player or not','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+  if(!photoFile){ toast('Profile photo is required','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
 
   try {
     const existing = await sbGet('players',`select=id&mobile=eq.${encodeURIComponent(mobile)}`);
     if(existing.length){ toast('This mobile is already registered!','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
     let photoUrl = null;
-    if(photoFile){
-      const status = document.getElementById('photo-status');
-      btn.textContent='Uploading photo…';
-      if(status) status.style.display='block';
-      try{ photoUrl = await uploadPhoto(photoFile, playerId); }
-      catch(e){ toast('Photo upload failed, registering without photo.','error'); }
+    const status = document.getElementById('photo-status');
+    btn.textContent='Uploading photo…';
+    if(status) status.style.display='block';
+    try{ photoUrl = await uploadPhoto(photoFile, playerId); }
+    catch(e){
       if(status) status.style.display='none';
+      toast('Photo upload failed. Please try again.','error');
+      btn.disabled=false; btn.textContent='Register for the Tournament';
+      return;
     }
+    if(status) status.style.display='none';
     btn.textContent='Registering…';
     let basePts = null;
     if(gender==='Male'){
@@ -1620,19 +1624,23 @@ async function submitKidReg(e){
   if(!validateMobile(mobile)){ toast('Parent mobile number must be exactly 10 digits (numbers only)','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
   if(!level){ toast('Please select proficiency level','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
   if(!foreign){ toast('Please select if the kid is a foreign player or not','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
+  if(!photoFile){ toast('Profile photo is required','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
 
   try{
     const existing = await sbGet('players',`select=id&mobile=eq.${encodeURIComponent(mobile)}&name=eq.${encodeURIComponent(name)}`);
     if(existing.length){ toast('This kid is already registered!','error'); btn.disabled=false; btn.textContent='Register Kid for the Tournament'; return; }
     let photoUrl = null;
-    if(photoFile){
-      const status = document.getElementById('k-photo-status');
-      btn.textContent='Uploading photo…';
-      if(status) status.style.display='block';
-      try{ photoUrl = await uploadPhoto(photoFile, playerId); }
-      catch(e){ toast('Photo upload failed, registering without photo.','error'); }
+    const status = document.getElementById('k-photo-status');
+    btn.textContent='Uploading photo…';
+    if(status) status.style.display='block';
+    try{ photoUrl = await uploadPhoto(photoFile, playerId); }
+    catch(e){
       if(status) status.style.display='none';
+      toast('Photo upload failed. Please try again.','error');
+      btn.disabled=false; btn.textContent='Register Kid for the Tournament';
+      return;
     }
+    if(status) status.style.display='none';
     btn.textContent='Registering…';
     await sbInsert('players',{
       id: playerId, name, flat, mobile, gender, level,
