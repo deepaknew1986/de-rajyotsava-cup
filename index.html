@@ -308,7 +308,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 .reg-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
 .field-error input,.field-error select{border-bottom:1px solid var(--red)!important;}
 .field-error label{color:var(--red)!important;}
-.player-thumb{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--border2);background:var(--card);}
+.player-thumb{width:34px;height:34px;border-radius:50%;object-fit:cover;border:1px solid var(--border2);background:var(--card);image-rendering:high-quality;}
 .player-thumb-placeholder{width:34px;height:34px;border-radius:50%;border:1px solid var(--border2);background:rgba(200,150,0,0.1);display:inline-flex;align-items:center;justify-content:center;color:var(--amber);font-size:11px;font-weight:600;font-family:'Space Grotesk',sans-serif;flex-shrink:0;}
 .auc-tab-bar{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.5rem;}
 .auc-tab{padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;font-weight:500;}
@@ -321,7 +321,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 .pre-auc-card{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:12px;display:flex;align-items:center;gap:10px;transition:border-color .2s;}
 .pre-auc-card:hover{border-color:var(--border2);}
 .pre-auc-photo{width:44px;height:44px;border-radius:50%;object-fit:cover;background:var(--bg2);border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px;overflow:hidden;}
-.pre-auc-photo img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.pre-auc-photo img{width:100%;height:100%;object-fit:cover;border-radius:50%;image-rendering:high-quality;}
 .pre-auc-name{font-weight:600;color:#e8c060;font-size:12px;}
 .pre-auc-flat{font-size:10px;color:var(--muted2);}
 .pre-auc-pts{font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-top:4px;}
@@ -334,7 +334,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 .auc-player-row:last-child{border-bottom:none;}
 .auc-player-row.highest{background:rgba(245,194,0,0.06);border-left:3px solid var(--gold);}
 .auc-pl-photo{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--bg2);border:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;overflow:hidden;}
-.auc-pl-photo img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.auc-pl-photo img{width:100%;height:100%;object-fit:cover;border-radius:50%;image-rendering:high-quality;}
 .auc-pl-name{font-size:12px;font-weight:500;color:#e8c060;flex:1;}
 .auc-pl-role{font-size:9px;letter-spacing:1px;color:var(--muted2);}
 .auc-pl-prices{text-align:right;flex-shrink:0;}
@@ -818,6 +818,8 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <input type="text" id="adm-live-search" placeholder="Type a player name…" oninput="filterAdminLiveList()"/>
       </div>
       <div id="adm-live-player-list" class="pl-list"></div>
+
+      <div id="adm-unsold-section" style="margin-top:1.5rem;"></div>
 
       <div id="adm-live-spotlight-wrap" style="position:relative;margin-top:1.5rem;">
         <div class="sold-flash" id="adm-live-sold-flash"></div>
@@ -1865,7 +1867,7 @@ async function openEdit(id){
   // Show current photo or placeholder
   const prev = document.getElementById('edit-photo-preview');
   if(p.photoUrl){
-    prev.innerHTML=`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+    prev.innerHTML=`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;image-rendering:high-quality;"/>`;
   } else {
     prev.innerHTML='&#128247;';
   }
@@ -2616,8 +2618,8 @@ async function renderLiveAuctionPublic(){
   const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   cardEl.innerHTML = `
     <div style="text-align:center;padding:1.5rem 1rem;">
-      <div style="width:100px;height:100px;border-radius:50%;background:rgba(255,216,77,0.1);border:2px solid rgba(255,216,77,0.35);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:36px;color:var(--gold);margin:0 auto 14px;overflow:hidden;">
-        ${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;"/>`:initials}
+      <div style="width:220px;height:220px;border-radius:50%;background:rgba(255,216,77,0.1);border:3px solid rgba(255,216,77,0.35);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:64px;color:var(--gold);margin:0 auto 14px;overflow:hidden;box-shadow:0 0 30px rgba(255,216,77,0.15);">
+        ${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;image-rendering:high-quality;"/>`:initials}
       </div>
       <div style="font-family:'Cinzel',serif;font-weight:700;font-size:26px;color:var(--gold);margin-bottom:4px;">${p.name}</div>
       <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">${p.level} · Base ${p.basePts??'—'} pts</div>
@@ -2695,7 +2697,34 @@ function renderAdminLivePlayerList(){
       <span class="pl-name">${p.name}</span><span class="pl-badge">${p.basePts??'—'} pts</span>
     </div>`;
   }).join('') : '<div class="empty" style="padding:1rem;">No players left to auction — everyone remaining is either sold, unsold, or already an owner/marquee.</div>';
+  renderUnsoldPlayersList();
 }
+
+function renderUnsoldPlayersList(){
+  const {ps} = _liveCache;
+  const unsoldEl = document.getElementById('adm-unsold-section');
+  if(!unsoldEl) return;
+  const unsold = ps.filter(p=>p.unsold);
+  if(!unsold.length){ unsoldEl.innerHTML = ''; return; }
+  unsoldEl.innerHTML = `
+    <div style="font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:1px;color:var(--red);text-transform:uppercase;margin-bottom:8px;">Unsold (${unsold.length})</div>
+    <div class="pl-list">
+      ${unsold.map(p=>`<div class="pl-item" style="display:flex;align-items:center;justify-content:space-between;opacity:0.75;">
+        <span class="pl-name">${p.name}</span>
+        <button class="btn-sm" onclick="bringBackToAuction('${p.id}')" style="margin-left:8px;">&#8630; Back to Auction</button>
+      </div>`).join('')}
+    </div>`;
+}
+
+async function bringBackToAuction(playerId){
+  if(!requireConn()) return;
+  try{
+    await savePlayerField(playerId, {unsold:false});
+    toast('Player moved back to the auction pool.','success');
+    await renderAdminLiveAuction();
+  } catch(e){ toast('Error: '+e.message,'error'); }
+}
+
 
 function filterAdminLiveList(){
   const q = document.getElementById('adm-live-search').value.toLowerCase().trim();
@@ -2730,7 +2759,7 @@ function renderAdminLiveSpotlight(){
   spotEl.innerHTML = `
     <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:12px;padding:20px;">
       <div style="width:72px;height:72px;border-radius:50%;background:rgba(255,216,77,0.1);border:2px solid rgba(255,216,77,0.35);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:26px;color:var(--gold);overflow:hidden;flex-shrink:0;">
-        ${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;"/>`:initials}
+        ${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;image-rendering:high-quality;"/>`:initials}
       </div>
       <div style="flex:1;min-width:180px;">
         <div style="font-family:'Cinzel',serif;font-weight:700;font-size:20px;color:var(--gold);">${p.name}</div>
