@@ -1554,12 +1554,16 @@ async function submitReg(e){
       if(status) status.style.display='none';
     }
     btn.textContent='Registering…';
-    const bpRules = await getBpRules().catch(()=>[]);
-    const bpMatch = matchBpRuleFor(bpRules, level, isForeign);
+    let basePts = null;
+    if(gender==='Male'){
+      const bpRules = await getBpRules().catch(()=>[]);
+      const bpMatch = matchBpRuleFor(bpRules, level, isForeign);
+      basePts = bpMatch ? bpMatch.price : null;
+    }
     await sbInsert('players',{
       id: playerId, name, flat, mobile, gender, level,
       is_owner:false, is_marquee:false, is_foreign:isForeign,
-      is_kid:false, age:null, base_pts:bpMatch?bpMatch.price:null, photo_url: photoUrl,
+      is_kid:false, age:null, base_pts:basePts, photo_url: photoUrl,
       season: ACTIVE_SEASON
     });
     toast('🏸 Registered! Welcome, '+name+'!','success');
@@ -1630,12 +1634,10 @@ async function submitKidReg(e){
       if(status) status.style.display='none';
     }
     btn.textContent='Registering…';
-    const bpRules = await getBpRules().catch(()=>[]);
-    const bpMatch = matchBpRuleFor(bpRules, level, isForeign);
     await sbInsert('players',{
       id: playerId, name, flat, mobile, gender, level,
       is_owner:false, is_marquee:false, is_foreign:isForeign,
-      is_kid:true, age, base_pts:bpMatch?bpMatch.price:null, photo_url: photoUrl,
+      is_kid:true, age, base_pts:null, photo_url: photoUrl,
       season: ACTIVE_SEASON
     });
     toast('🏸 '+name+' registered in Kids category!','success');
@@ -1715,7 +1717,10 @@ async function renderAdminTable(){
   const tb = document.getElementById('admin-tbody');
   if(!data.length){tb.innerHTML='<tr><td colspan="10" class="empty">No players found.</td></tr>';return;}
   tb.innerHTML=data.map((p,i)=>{
-    const ptsHtml=`<div class="pts-cell"><input class="pts-input" type="number" value="${p.basePts!=null?p.basePts:''}" placeholder="—" id="pts-${p.id}" min="0" max="10000"/><button class="pts-save" onclick="savePts('${p.id}')">✓</button></div>`;
+    const notAuctioned = p.gender==='Female' || p.isKid;
+    const ptsHtml = notAuctioned
+      ? `<span style="color:var(--muted);font-size:11px;letter-spacing:0.5px;">N/A</span>`
+      : `<div class="pts-cell"><input class="pts-input" type="number" value="${p.basePts!=null?p.basePts:''}" placeholder="—" id="pts-${p.id}" min="0" max="10000"/><button class="pts-save" onclick="savePts('${p.id}')">✓</button></div>`;
     const ownDis=!p.isOwner&&ownCt>=MAX_OWN;
     const mrqDis=!p.isMarquee&&mrqCt>=MAX_MRQ;
     const isForeign=!!p.isForeign;
@@ -2060,10 +2065,13 @@ async function saveMarqueePlayer(){
     if(mrqCt>=MAX_MRQ){toast('Maximum 3 marquee players already tagged. Remove one first.','error');return;}
   }
   try{
-    const bpRules = await getBpRules().catch(()=>[]);
-    const bpMatch = matchBpRuleFor(bpRules, level, isForeign);
+    let knownBasePts = null;
+    if(gender==='Male'){
+      const bpRules = await getBpRules().catch(()=>[]);
+      const bpMatch = matchBpRuleFor(bpRules, level, isForeign);
+      knownBasePts = bpMatch ? bpMatch.price : null;
+    }
     const newId = 'player_'+Date.now();
-    const knownBasePts = bpMatch ? bpMatch.price : null;
     await sbInsert('players',{
       id:newId,
       name, flat:flat||'', mobile:mobile||null, gender, level,
@@ -2303,6 +2311,7 @@ async function applyBpRules(){
   const rules = await getBpRules();
   const ps    = await getP();
   for(const p of ps){
+    if(p.gender==='Female' || p.isKid) continue;
     const match = matchBpRuleFor(rules, p.level, p.isForeign);
     if(match && match.price !== p.basePts) await savePlayerField(p.id,{base_pts:match.price});
   }
@@ -2330,6 +2339,7 @@ async function renderBpRules(){
   }
   tb.innerHTML=rules.map((r,i)=>{
     const affected=ps.filter(p=>{
+      if(p.gender==='Female' || p.isKid) return false;
       const isForeign=p.isForeign?'Y':'N';
       return (r.level==='All'||r.level===p.level)&&(r.foreign==='All'||r.foreign===isForeign);
     }).length;
@@ -2520,7 +2530,7 @@ async function renderRegisteredPlayers(){
             <div>
               <div class="pre-auc-name">${p.name}${p.isForeign?' &#9992;':''}</div>
               <div class="pre-auc-flat">${p.flat}</div>
-              <div class="pre-auc-pts">${p.basePts!=null?p.basePts+' pts':'—'}</div>
+              ${(p.gender==='Female'||p.isKid) ? '' : `<div class="pre-auc-pts">${p.basePts!=null?p.basePts+' pts':'—'}</div>`}
             </div>
           </div>`;
         }).join('')}
@@ -2669,7 +2679,7 @@ async function saveLiveStream(){
 
 function renderAdminLivePlayerList(){
   const {ps, a} = _liveCache;
-  const eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold);
+  const eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold && p.gender==='Male' && !p.isKid);
   const listEl = document.getElementById('adm-live-player-list');
   listEl.innerHTML = eligible.length ? eligible.map(p=>{
     const disabled = a && a.curBidId===p.id;
