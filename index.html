@@ -2756,7 +2756,8 @@ function renderAdminLiveSpotlight(){
   const leaderTeam = tms.find(t=>t.id===a.bidLeader);
   const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   spotEl.innerHTML = `
-    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:12px;padding:20px;">
+    <div style="position:relative;display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:12px;padding:20px;">
+      <button onclick="cancelPlayerSelection()" title="Close (player becomes selectable again)" style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,0.35);border:1px solid rgba(255,216,77,0.25);color:var(--red);font-size:13px;line-height:24px;text-align:center;cursor:pointer;padding:0;">&#10005;</button>
       <div style="width:72px;height:72px;border-radius:50%;background:rgba(255,216,77,0.1);border:2px solid rgba(255,216,77,0.35);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:26px;color:var(--gold);overflow:hidden;flex-shrink:0;">
         ${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;image-rendering:high-quality;"/>`:initials}
       </div>
@@ -2785,8 +2786,7 @@ function renderAdminLiveSpotlight(){
   ctrlEl.innerHTML = teamBtns +
     `<button class="btn-sm" ${undoDisabled} onclick="undoLastBid()">&#8630; Undo Last Bid</button>` +
     `<button class="btn-sm success" ${soldDisabled} onclick="adminFinalizeSale()">Mark Sold</button>` +
-    `<button class="btn-sm danger" onclick="adminFinalizeUnsold()">Mark Unsold</button>` +
-    `<button class="btn-sm" onclick="cancelPlayerSelection()">&#10005; Cancel Selection</button>`;
+    `<button class="btn-sm danger" onclick="adminFinalizeUnsold()">Mark Unsold</button>`;
 }
 
 async function cancelPlayerSelection(){
