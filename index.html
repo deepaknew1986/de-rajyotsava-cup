@@ -1847,9 +1847,18 @@ async function toggleForeign(id){
   if(!requireConn()) return;
   const ps = await getP();
   const p  = ps.find(x=>x.id===id); if(!p) return;
+  const newForeign = !p.isForeign;
+  const fields = {is_foreign:newForeign};
+  // Recalculate base price so it always matches the saved foreign status
+  // (Female/Kid players never get a base price — v3.28 rule)
+  if(!p.isKid && p.gender==='Male'){
+    const rules = await getBpRules();
+    const match = matchBpRuleFor(rules, p.level, newForeign);
+    fields.base_pts = match ? match.price : null;
+  }
   try{
-    await savePlayerField(id,{is_foreign:!p.isForeign});
-    toast((!p.isForeign?p.name+' marked as Foreign Player':p.name+' marked as Local'));
+    await savePlayerField(id,fields);
+    toast((newForeign?p.name+' marked as Foreign Player':p.name+' marked as Local'));
     await renderAdminTable();
   } catch(e){ toast('Error: '+e.message,'error'); }
 }
@@ -1887,13 +1896,28 @@ function previewEditPhoto(event){
 
 async function saveEdit(){
   if(!_editId||!requireConn()) return;
+  const ps = await getP();
+  const existing = ps.find(x=>x.id===_editId);
+  const newGender = document.getElementById('edit-gender').value;
+  const newLevel  = document.getElementById('edit-level').value;
   const body={
     name:   document.getElementById('edit-name').value.trim(),
     flat:   document.getElementById('edit-flat').value.trim(),
     mobile: document.getElementById('edit-mobile').value.trim(),
-    gender: document.getElementById('edit-gender').value,
-    level:  document.getElementById('edit-level').value,
+    gender: newGender,
+    level:  newLevel,
   };
+  // Recalculate base price so it always matches the saved level/foreign status
+  // (Female/Kid players never get a base price — v3.28 rule)
+  if(existing && !existing.isKid){
+    if(newGender==='Male'){
+      const rules = await getBpRules();
+      const match = matchBpRuleFor(rules, newLevel, existing.isForeign);
+      body.base_pts = match ? match.price : null;
+    } else {
+      body.base_pts = null;
+    }
+  }
   // Handle photo upload if a new file was selected
   const photoFile = document.getElementById('edit-photo-file').files[0];
   if(photoFile){
