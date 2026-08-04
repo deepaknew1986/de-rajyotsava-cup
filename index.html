@@ -1545,8 +1545,10 @@ async function submitReg(e){
   if(!photoFile){ toast('Profile photo is required','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
 
   try {
-    const existing = await sbGet('players',`select=id&mobile=eq.${encodeURIComponent(mobile)}`);
-    if(existing.length){ toast('This mobile is already registered!','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
+    // Only block if the same person (name + mobile) is already registered —
+    // different people (e.g. spouses) are allowed to share a mobile number.
+    const existing = await sbGet('players',`select=id&mobile=eq.${encodeURIComponent(mobile)}&name=ilike.${encodeURIComponent(name)}`);
+    if(existing.length){ toast('You appear to be already registered with this name and mobile number!','error'); btn.disabled=false; btn.textContent='Register for the Tournament'; return; }
     let photoUrl = null;
     const status = document.getElementById('photo-status');
     btn.textContent='Uploading photo…';
@@ -1577,11 +1579,7 @@ async function submitReg(e){
     filterAdultLevelOptions();
     document.getElementById('photo-preview-wrap').innerHTML='<span id="photo-placeholder-icon">&#128247;</span>';
   } catch(err){
-    if(err.message && err.message.includes('players_mobile_key')){
-      toast('This mobile number is already registered!','error');
-    } else {
-      toast('Registration failed: '+err.message,'error');
-    }
+    toast('Registration failed: '+err.message,'error');
   }
   btn.disabled=false; btn.textContent='Register for the Tournament';
 }
@@ -2123,11 +2121,7 @@ async function saveMarqueePlayer(){
       if(input && !input.value){ input.value = knownBasePts; }
     }
   } catch(e){
-    if(e.message && e.message.includes('players_mobile_key')){
-      toast('This mobile number is already registered!','error');
-    } else {
-      toast('Error: '+e.message,'error');
-    }
+    toast('Error: '+e.message,'error');
   }
 }
 
