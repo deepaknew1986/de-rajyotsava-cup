@@ -123,6 +123,9 @@ body::after{content:'';position:fixed;inset:0;z-index:-1;background:rgba(10,6,0,
 .stat{background:rgba(10,6,0,0.5);backdrop-filter:blur(8px);border:1px solid rgba(255,216,77,0.12);border-radius:4px;padding:14px;text-align:center;}
 .stat-num{font-family:'Space Grotesk',sans-serif;font-size:22px;color:var(--gold);font-weight:700;}
 .stat-label{font-size:10px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:4px;}
+.stat.clickable{cursor:pointer;transition:border-color 0.15s,background 0.15s;}
+.stat.clickable:hover{border-color:rgba(255,216,77,0.4);}
+.stat.active{border-color:var(--amber);background:rgba(212,128,10,0.12);}
 
 /* ── ADMIN TOOLS ── */
 .admin-tools{display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;align-items:center;}
@@ -516,7 +519,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
           <div class="field"><label>Age *</label><input id="k-age" type="number" placeholder="e.g. 12" min="1" max="15"/></div>
           <div class="field">
             <label>Gender *</label>
-            <select id="k-gender">
+            <select id="k-gender" onchange="filterKidLevelOptions()">
               <option value="">— Select —</option>
               <option>Male</option><option>Female</option>
             </select>
@@ -659,11 +662,11 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 
     <!-- Stats always visible -->
     <div class="stats" style="grid-template-columns:repeat(5,1fr);">
-      <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total</div></div>
-      <div class="stat"><div class="stat-num" id="stat-male">0</div><div class="stat-label">Men</div></div>
-      <div class="stat"><div class="stat-num" id="stat-female">0</div><div class="stat-label">Women</div></div>
-      <div class="stat"><div class="stat-num" id="stat-owners">0</div><div class="stat-label">Owners</div></div>
-      <div class="stat"><div class="stat-num" id="stat-kids" style="color:#64c8ff;">0</div><div class="stat-label">Kids</div></div>
+      <div class="stat clickable" id="statcard-" onclick="setCategoryFilter('')"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Total</div></div>
+      <div class="stat clickable" id="statcard-Male" onclick="setCategoryFilter('Male')"><div class="stat-num" id="stat-male">0</div><div class="stat-label">Men</div></div>
+      <div class="stat clickable" id="statcard-Female" onclick="setCategoryFilter('Female')"><div class="stat-num" id="stat-female">0</div><div class="stat-label">Women</div></div>
+      <div class="stat clickable" id="statcard-Owners" onclick="setCategoryFilter('Owners')"><div class="stat-num" id="stat-owners">0</div><div class="stat-label">Owners</div></div>
+      <div class="stat clickable" id="statcard-Kids" onclick="setCategoryFilter('Kids')"><div class="stat-num" id="stat-kids" style="color:#64c8ff;">0</div><div class="stat-label">Kids</div></div>
     </div>
 
     <!-- Admin Sub-Tabs -->
@@ -681,8 +684,8 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 
       <div class="admin-tools">
         <input class="search-box" id="search-box" placeholder="Search name, flat, mobile…" oninput="renderAdminTable()"/>
-        <select class="search-box" id="filter-gender" style="max-width:130px;" onchange="renderAdminTable()">
-          <option value="">All Genders</option><option>Male</option><option>Female</option>
+        <select class="search-box" id="filter-category" style="max-width:150px;" onchange="renderAdminTable();syncStatCardHighlight();">
+          <option value="">All</option><option value="Male">Male</option><option value="Female">Female</option><option value="Kids">Kids</option><option value="Owners">Owners</option>
         </select>
         <select class="search-box" id="filter-level" style="max-width:160px;" onchange="renderAdminTable()">
           <option value="">All Levels</option><option>Advanced</option><option>Intermediate+</option><option>Intermediate</option><option>Beginner</option>
@@ -1510,6 +1513,29 @@ function filterAdultLevelOptions(){
   }
 }
 
+// Female Kids: only Intermediate and Beginner are offered. Male Kids keep all 4 levels.
+function filterKidLevelOptions(){
+  const gender = document.getElementById('k-gender').value;
+  const levelSel = document.getElementById('k-level');
+  const cur = levelSel.value;
+  if(gender==='Female'){
+    levelSel.innerHTML = `
+      <option value="">— Select your level —</option>
+      <option value="Intermediate">Intermediate</option>
+      <option value="Beginner">Beginner</option>`;
+    if(cur!=='Intermediate' && cur!=='Beginner') levelSel.value = '';
+    else levelSel.value = cur;
+  } else {
+    levelSel.innerHTML = `
+      <option value="">— Select your level —</option>
+      <option value="Advanced">Advanced</option>
+      <option value="Intermediate+">Intermediate+</option>
+      <option value="Intermediate">Intermediate</option>
+      <option value="Beginner">Beginner</option>`;
+    levelSel.value = cur;
+  }
+}
+
 // ── Validation helpers ──
 function validateName(name){ return name.length>=3 && /^[a-zA-Z\s.'-]+$/.test(name); }
 function validateMobile(mobile){
@@ -1650,6 +1676,7 @@ async function submitKidReg(e){
     });
     toast('🏸 '+name+' registered in Kids category!','success');
     document.getElementById('kid-form').reset();
+    filterKidLevelOptions();
     document.getElementById('k-photo-preview-wrap').innerHTML='<span>&#128247;</span>';
   } catch(err){ toast('Registration failed: '+err.message,'error'); }
   btn.disabled=false; btn.textContent='Register Kid for the Tournament';
@@ -1712,13 +1739,18 @@ async function renderAdminTable(){
     return;
   }
   const q  = (document.getElementById('search-box')?.value||'').toLowerCase();
-  const fg = document.getElementById('filter-gender')?.value||'';
+  const fc = document.getElementById('filter-category')?.value||'';
   const fl = document.getElementById('filter-level')?.value||'';
   let ps;
   try { ps = await getP(); } catch(e){ toast('Error loading players','error'); return; }
   const data = ps.filter(p=>{
     const m=!q||p.name.toLowerCase().includes(q)||p.flat.toLowerCase().includes(q)||(p.mobile||'').includes(q);
-    return m&&(!fg||p.gender===fg)&&(!fl||p.level===fl);
+    let catMatch = true;
+    if(fc==='Male')        catMatch = p.gender==='Male' && !p.isKid;
+    else if(fc==='Female') catMatch = p.gender==='Female' && !p.isKid;
+    else if(fc==='Kids')   catMatch = !!p.isKid;
+    else if(fc==='Owners') catMatch = !!p.isOwner;
+    return m&&catMatch&&(!fl||p.level===fl);
   });
   const ownCt = ps.filter(p=>p.isOwner).length;
   const mrqCt = ps.filter(p=>p.isMarquee).length;
@@ -1761,11 +1793,28 @@ async function updateStats(){
   if(!_connected) return;
   const ps = await getP();
   document.getElementById('stat-total').textContent  = ps.length;
-  document.getElementById('stat-male').textContent   = ps.filter(p=>p.gender==='Male').length;
-  document.getElementById('stat-female').textContent = ps.filter(p=>p.gender==='Female').length;
+  document.getElementById('stat-male').textContent   = ps.filter(p=>p.gender==='Male' && !p.isKid).length;
+  document.getElementById('stat-female').textContent = ps.filter(p=>p.gender==='Female' && !p.isKid).length;
   document.getElementById('stat-owners').textContent = ps.filter(p=>p.isOwner).length;
   const kidEl = document.getElementById('stat-kids');
   if(kidEl) kidEl.textContent = ps.filter(p=>p.isKid).length;
+}
+
+// Clicking a stat card sets (or clears, on a second click) the category filter dropdown.
+function setCategoryFilter(cat){
+  const sel = document.getElementById('filter-category');
+  if(!sel) return;
+  sel.value = (sel.value===cat) ? '' : cat;
+  renderAdminTable();
+  syncStatCardHighlight();
+}
+
+// Keeps the highlighted stat card in sync with the dropdown, however it was changed.
+function syncStatCardHighlight(){
+  const cur = document.getElementById('filter-category')?.value||'';
+  document.querySelectorAll('.stat.clickable').forEach(el=>el.classList.remove('active'));
+  const active = document.getElementById('statcard-'+cur);
+  if(active) active.classList.add('active');
 }
 
 async function savePts(id){
