@@ -474,7 +474,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
           <div class="field"><label>Mobile Number *</label><input id="f-mobile" type="tel" placeholder="9876543210"/></div>
           <div class="field">
             <label>Gender *</label>
-            <select id="f-gender">
+            <select id="f-gender" onchange="filterAdultLevelOptions()">
               <option value="">— Select —</option>
               <option>Male</option><option>Female</option>
             </select>
@@ -529,8 +529,6 @@ tr:hover td{background:rgba(200,150,0,0.1);}
             <label>Proficiency Level *</label>
             <select id="k-level">
               <option value="">— Select your level —</option>
-              <option value="Advanced">Advanced</option>
-              <option value="Intermediate+">Intermediate+</option>
               <option value="Intermediate">Intermediate</option>
               <option value="Beginner">Beginner</option>
             </select>
@@ -1478,9 +1476,18 @@ function switchRegTab(tab){
 
 function filterAdultLevelOptions(){
   const foreign = document.getElementById('f-foreign').value;
+  const gender = document.getElementById('f-gender').value;
   const levelSel = document.getElementById('f-level');
   const cur = levelSel.value;
-  if(foreign==='Y'){
+  // Gender rule always wins: Female players (local or foreign) only get Intermediate/Beginner
+  if(gender==='Female'){
+    levelSel.innerHTML = `
+      <option value="">— Select your level —</option>
+      <option value="Intermediate">Intermediate</option>
+      <option value="Beginner">Beginner</option>`;
+    if(cur!=='Intermediate' && cur!=='Beginner') levelSel.value = '';
+    else levelSel.value = cur;
+  } else if(foreign==='Y'){
     levelSel.innerHTML = `
       <option value="">— Select your level —</option>
       <option value="Advanced">Advanced</option>
@@ -1513,27 +1520,13 @@ function filterAdultLevelOptions(){
   }
 }
 
-// Female Kids: only Intermediate and Beginner are offered. Male Kids keep all 4 levels.
+// Kids (any gender): only Intermediate and Beginner are ever offered.
 function filterKidLevelOptions(){
-  const gender = document.getElementById('k-gender').value;
   const levelSel = document.getElementById('k-level');
-  const cur = levelSel.value;
-  if(gender==='Female'){
-    levelSel.innerHTML = `
-      <option value="">— Select your level —</option>
-      <option value="Intermediate">Intermediate</option>
-      <option value="Beginner">Beginner</option>`;
-    if(cur!=='Intermediate' && cur!=='Beginner') levelSel.value = '';
-    else levelSel.value = cur;
-  } else {
-    levelSel.innerHTML = `
-      <option value="">— Select your level —</option>
-      <option value="Advanced">Advanced</option>
-      <option value="Intermediate+">Intermediate+</option>
-      <option value="Intermediate">Intermediate</option>
-      <option value="Beginner">Beginner</option>`;
-    levelSel.value = cur;
-  }
+  levelSel.innerHTML = `
+    <option value="">— Select your level —</option>
+    <option value="Intermediate">Intermediate</option>
+    <option value="Beginner">Beginner</option>`;
 }
 
 // ── Validation helpers ──
