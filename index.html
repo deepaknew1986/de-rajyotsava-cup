@@ -688,6 +688,9 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <select class="search-box" id="filter-level" style="max-width:160px;" onchange="renderAdminTable()">
           <option value="">All Levels</option><option>Advanced</option><option>Intermediate+</option><option>Intermediate</option><option>Beginner</option>
         </select>
+        <select class="search-box" id="filter-foreign" style="max-width:140px;" onchange="renderAdminTable()">
+          <option value="">All (Foreign+Local)</option><option value="Y">Foreign Only</option><option value="N">Local Only</option>
+        </select>
         <button class="btn-sm success" onclick="exportCSV()">Export CSV</button>
         <button class="btn-sm danger" onclick="confirmClearAll()">Clear All</button>
         <button class="btn-sm" onclick="openAddMarqueeModal()">&#9830; Add Player</button>
@@ -1734,6 +1737,7 @@ async function renderAdminTable(){
   const q  = (document.getElementById('search-box')?.value||'').toLowerCase();
   const fc = document.getElementById('filter-category')?.value||'';
   const fl = document.getElementById('filter-level')?.value||'';
+  const ff = document.getElementById('filter-foreign')?.value||'';
   let ps;
   try { ps = await getP(); } catch(e){ toast('Error loading players','error'); return; }
   const data = ps.filter(p=>{
@@ -1743,7 +1747,10 @@ async function renderAdminTable(){
     else if(fc==='Female') catMatch = p.gender==='Female' && !p.isKid;
     else if(fc==='Kids')   catMatch = !!p.isKid;
     else if(fc==='Owners') catMatch = !!p.isOwner;
-    return m&&catMatch&&(!fl||p.level===fl);
+    let foreignMatch = true;
+    if(ff==='Y')      foreignMatch = !!p.isForeign;
+    else if(ff==='N') foreignMatch = !p.isForeign;
+    return m&&catMatch&&foreignMatch&&(!fl||p.level===fl);
   });
   const ownCt = ps.filter(p=>p.isOwner).length;
   const mrqCt = ps.filter(p=>p.isMarquee).length;
