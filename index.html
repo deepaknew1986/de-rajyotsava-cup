@@ -837,6 +837,32 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <div id="adm-live-spotlight"></div>
       </div>
       <div id="adm-live-controls" class="live-bid-controls"></div>
+
+      <div id="adm-leftover-section" style="margin-top:2rem;padding-top:1.5rem;border-top:1px dashed rgba(255,216,77,0.25);">
+        <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Leftover Player Assignment</div>
+        <div class="info-box" style="margin-bottom:1rem;">
+          For players who never got bid on because the teams that needed them already filled their planned quota for that pool. Pick the player and the team, and the price is computed automatically — no bidding involved.
+        </div>
+        <div id="adm-leftover-buckets" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.25rem;"></div>
+        <div style="background:rgba(10,6,0,0.5);border:1px solid rgba(255,216,77,0.15);border-radius:8px;padding:1.25rem;">
+          <div class="grid" style="margin-bottom:14px;">
+            <div class="field" style="margin-bottom:0;">
+              <label>Leftover player</label>
+              <select id="lo-player-sel" onchange="renderLeftoverPreview()">
+                <option value="">— Select —</option>
+              </select>
+            </div>
+            <div class="field" style="margin-bottom:0;">
+              <label>Assign to team</label>
+              <select id="lo-team-sel" onchange="renderLeftoverPreview()">
+                <option value="">— Select —</option>
+              </select>
+            </div>
+          </div>
+          <div id="lo-preview-wrap"></div>
+          <button class="btn-primary" id="lo-confirm-btn" style="margin-top:14px;" onclick="confirmLeftoverAssignment()" disabled>Confirm Assignment</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1151,6 +1177,7 @@ function dbToPlayer(r){
     finalPts: r.final_pts||null,
     soldToTeam: r.sold_to_team||null,
     unsold: !!r.unsold,
+    isLeftover: !!r.is_leftover,
     registeredAt: r.registered_at ? new Date(r.registered_at).toLocaleString('en-IN') : '',
     photoUrl: r.photo_url||null
   };
@@ -2743,6 +2770,7 @@ async function renderAdminLiveAuction(){
   if(ytInput) ytInput.value = _liveCache.a.youtubeVideoId || _liveCache.a.youtubeChannelId || '';
   renderAdminLivePlayerList();
   renderAdminLiveSpotlight();
+  renderLeftoverSection();
 }
 
 async function saveLiveStream(){
@@ -2916,6 +2944,129 @@ function renderAdminLiveSpotlight(){
     `<button class="btn-sm" ${undoDisabled} onclick="undoLastBid()">&#8630; Undo Last Bid</button>` +
     `<button class="btn-sm success" ${soldDisabled} onclick="adminFinalizeSale()">Mark Sold</button>` +
     `<button class="btn-sm danger" onclick="adminFinalizeUnsold()">Mark Unsold</button>`;
+}
+
+/* ══════════════════════════════════════════════
+   LEFTOVER PLAYER ASSIGNMENT
+   Buckets are grouped purely by proficiency level — foreign and local
+   players in the same level share one "highest sold" number, since
+   foreign players are only ever Advanced or Intermediate+.
+══════════════════════════════════════════════ */
+const LEFTOVER_BUCKETS = [
+  {key:'advIntp', label:'Advanced + Intermediate+', pct:0.20, match:p=>p.level==='Advanced'||p.level==='Intermediate+'},
+  {key:'int',     label:'Intermediate',             pct:0.15, match:p=>p.level==='Intermediate'},
+  {key:'beg',     label:'Beginner',                 pct:0.10, match:p=>p.level==='Beginner'}
+];
+
+function bucketForLevel(level){
+  return LEFTOVER_BUCKETS.find(b=>b.match({level})) || null;
+}
+
+// Highest price ever paid for a player in this bucket through genuine bidding
+// (leftover-priced sales are excluded, so the reference number never inflates itself).
+function bucketHighest(ps, bucket){
+  const sold = ps.filter(p=>p.soldToTeam && p.finalPts!=null && !p.isLeftover && bucket.match(p));
+  if(!sold.length) return null;
+  return Math.max(...sold.map(p=>p.finalPts));
+}
+
+function computeLeftoverPrice(player, highest){
+  const bucket = bucketForLevel(player.level);
+  if(!bucket || highest==null || player.basePts==null) return null;
+  return Math.round(player.basePts + bucket.pct * highest);
+}
+
+function renderLeftoverSection(){
+  const {ps, tms} = _liveCache;
+  const bucketsEl = document.getElementById('adm-leftover-buckets');
+  if(bucketsEl){
+    bucketsEl.innerHTML = LEFTOVER_BUCKETS.map(b=>{
+      const high = bucketHighest(ps, b);
+      return `<div style="background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:6px;padding:12px;">
+        <div style="font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">${b.label}</div>
+        <div style="font-size:11px;color:var(--muted2);margin-bottom:2px;">Highest sold this pool</div>
+        <div style="font-family:'Cinzel',serif;font-size:20px;color:var(--gold);font-weight:700;">${high!=null ? high.toLocaleString()+' pts' : '— (no sales yet)'}</div>
+        <div style="font-size:10px;color:var(--muted2);margin-top:4px;">Leftover bonus: +${Math.round(b.pct*100)}%</div>
+      </div>`;
+    }).join('');
+  }
+
+  const playerSel = document.getElementById('lo-player-sel');
+  const teamSel = document.getElementById('lo-team-sel');
+  if(!playerSel || !teamSel) return;
+
+  const leftover = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && p.gender==='Male' && !p.isKid);
+  const curPlayerVal = playerSel.value;
+  playerSel.innerHTML = '<option value="">— Select —</option>' +
+    leftover.map(p=>`<option value="${p.id}">${p.name} — ${p.level}${p.isForeign?' (Foreign)':''} · Base ${p.basePts??'—'}</option>`).join('');
+  if(leftover.find(p=>p.id===curPlayerVal)) playerSel.value = curPlayerVal;
+
+  const curTeamVal = teamSel.value;
+  teamSel.innerHTML = '<option value="">— Select —</option>' +
+    tms.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  if(tms.find(t=>t.id===curTeamVal)) teamSel.value = curTeamVal;
+
+  renderLeftoverPreview();
+}
+
+function renderLeftoverPreview(){
+  const {ps, tms} = _liveCache;
+  const previewEl = document.getElementById('lo-preview-wrap');
+  const btn = document.getElementById('lo-confirm-btn');
+  if(!previewEl || !btn) return;
+  const playerId = document.getElementById('lo-player-sel')?.value;
+  const teamId = document.getElementById('lo-team-sel')?.value;
+  if(!playerId || !teamId){
+    previewEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0;">Select a player and a team to see the computed price.</div>';
+    btn.disabled = true;
+    return;
+  }
+  const player = ps.find(p=>p.id===playerId);
+  const team = tms.find(t=>t.id===teamId);
+  const bucket = bucketForLevel(player.level);
+  const highest = bucketHighest(ps, bucket);
+  const price = computeLeftoverPrice(player, highest);
+  if(price==null){
+    previewEl.innerHTML = '<div style="font-size:12px;color:var(--red);padding:8px 0;">No genuine sale has happened yet in this pool ('+bucket.label+'), so there\'s no reference price to base this on. Sell at least one player in this pool through normal bidding first.</div>';
+    btn.disabled = true;
+    return;
+  }
+  const {remaining} = computeTeamAcquisitions(ps, team);
+  const overBudget = remaining < price;
+  previewEl.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,216,77,0.06);border:1px solid ${overBudget?'rgba(192,80,96,0.4)':'rgba(255,216,77,0.25)'};border-radius:6px;padding:12px 16px;">
+      <div>
+        <div style="font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">Computed price</div>
+        <div style="font-size:11px;color:var(--muted2);margin-top:2px;">${player.basePts} base + ${Math.round(bucket.pct*100)}% of ${highest.toLocaleString()} (pool high)</div>
+        ${overBudget ? `<div style="font-size:11px;color:var(--red);margin-top:4px;">${team.name} only has ${remaining.toLocaleString()} pts remaining — not enough.</div>` : ''}
+      </div>
+      <div style="font-family:'Cinzel',serif;font-size:26px;font-weight:900;color:${overBudget?'var(--red)':'var(--gold)'};">${price.toLocaleString()} pts</div>
+    </div>`;
+  btn.disabled = overBudget;
+}
+
+async function confirmLeftoverAssignment(){
+  if(!requireConn()) return;
+  const {ps, tms} = _liveCache;
+  const playerId = document.getElementById('lo-player-sel')?.value;
+  const teamId = document.getElementById('lo-team-sel')?.value;
+  if(!playerId || !teamId) return;
+  const player = ps.find(p=>p.id===playerId);
+  const team = tms.find(t=>t.id===teamId);
+  const bucket = bucketForLevel(player.level);
+  const highest = bucketHighest(ps, bucket);
+  const price = computeLeftoverPrice(player, highest);
+  if(price==null){ toast('No reference price available for this pool yet.','error'); return; }
+  const {remaining} = computeTeamAcquisitions(ps, team);
+  if(remaining < price){ toast(team.name+' does not have enough remaining budget for this assignment.','error'); return; }
+  try{
+    await savePlayerField(playerId, {final_pts:price, sold_to_team:teamId, unsold:false, is_leftover:true});
+    toast(player.name+' assigned to '+team.name+' at '+price.toLocaleString()+' pts.','success');
+    document.getElementById('lo-player-sel').value = '';
+    document.getElementById('lo-team-sel').value = '';
+    await renderAdminLiveAuction();
+    await updateStats();
+  } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
 async function cancelPlayerSelection(){
