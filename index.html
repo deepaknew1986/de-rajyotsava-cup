@@ -169,6 +169,12 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 .pl-item .pl-name{color:var(--text);font-weight:600;}
 .pl-item .pl-badge{font-size:9px;padding:2px 7px;border-radius:8px;letter-spacing:0.5px;background:rgba(255,216,77,0.15);color:var(--gold);}
 
+.live-pool-group{border:1px solid rgba(255,216,77,0.12);border-radius:6px;overflow:hidden;margin-bottom:8px;}
+.live-pool-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;background:rgba(255,216,77,0.03);transition:background .15s;}
+.live-pool-header:hover{background:rgba(255,216,77,0.08);}
+.live-pool-chev{font-size:10px;color:var(--muted2);transition:transform .15s;display:inline-block;}
+.live-pool-body{display:flex;flex-wrap:wrap;gap:8px;padding:12px 14px;}
+
 .live-bid-controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:1.25rem;}
 .team-bid-btn{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.5px;background:rgba(255,216,77,0.08);border:1px solid rgba(255,216,77,0.3);color:var(--gold);padding:12px 22px;border-radius:5px;cursor:pointer;transition:all .15s;}
 .team-bid-btn:hover{background:rgba(255,216,77,0.18);}
@@ -2754,15 +2760,51 @@ async function saveLiveStream(){
   } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
+const LIVE_POOL_DEFS = [
+  {key:'fadv', label:'Foreign Advanced', tagClass:'adv', match:p=>p.isForeign && p.level==='Advanced'},
+  {key:'fintp', label:'Foreign Intermediate+', tagClass:'intp', match:p=>p.isForeign && p.level==='Intermediate+'},
+  {key:'lintp', label:'Local Intermediate+', tagClass:'intp', match:p=>!p.isForeign && p.level==='Intermediate+'},
+  {key:'lint', label:'Local Intermediate', tagClass:'int', match:p=>!p.isForeign && p.level==='Intermediate'},
+  {key:'lbeg', label:'Local Beginner', tagClass:'beg', match:p=>!p.isForeign && p.level==='Beginner'}
+];
+let _liveOpenPools = new Set(['fadv']);
+
+function toggleLivePool(key){
+  if(_liveOpenPools.has(key)) _liveOpenPools.delete(key);
+  else _liveOpenPools.add(key);
+  renderAdminLivePlayerList();
+}
+
 function renderAdminLivePlayerList(){
   const {ps, a} = _liveCache;
   const eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold && p.gender==='Male' && !p.isKid && p.id!==(a&&a.curBidId));
   const listEl = document.getElementById('adm-live-player-list');
-  listEl.innerHTML = eligible.length ? eligible.map(p=>{
-    return `<div class="pl-item" onclick="adminSelectPlayer('${p.id}')" data-name="${p.name.toLowerCase()}">
-      <span class="pl-name">${p.name}</span><span class="pl-badge">${p.basePts??'—'} pts</span>
+  listEl.className = '';
+  if(!eligible.length){
+    listEl.innerHTML = '<div class="empty" style="padding:1rem;">No players left to auction — everyone remaining is either sold, unsold, currently spotlighted, or already an owner/marquee.</div>';
+    renderUnsoldPlayersList();
+    return;
+  }
+  listEl.innerHTML = LIVE_POOL_DEFS.map(def=>{
+    const group = eligible.filter(def.match);
+    if(!group.length) return '';
+    const isOpen = _liveOpenPools.has(def.key);
+    return `<div class="live-pool-group" data-pool="${def.key}">
+      <div class="live-pool-header" onclick="toggleLivePool('${def.key}')">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="tag ${def.tagClass}">${def.label}</span>
+          <span style="font-size:10px;color:var(--muted2);">${group.length} player${group.length!==1?'s':''}</span>
+        </div>
+        <span class="live-pool-chev" style="transform:rotate(${isOpen?180:0}deg);">&#9660;</span>
+      </div>
+      <div class="live-pool-body" style="display:${isOpen?'flex':'none'};">
+        ${group.map(p=>`<div class="pl-item" onclick="adminSelectPlayer('${p.id}')" data-name="${p.name.toLowerCase()}">
+          <span class="pl-name">${p.name}</span><span class="pl-badge">${p.basePts??'—'} pts</span>
+        </div>`).join('')}
+      </div>
     </div>`;
-  }).join('') : '<div class="empty" style="padding:1rem;">No players left to auction — everyone remaining is either sold, unsold, currently spotlighted, or already an owner/marquee.</div>';
+  }).join('');
+  filterAdminLiveList();
   renderUnsoldPlayersList();
 }
 
@@ -2794,10 +2836,30 @@ async function bringBackToAuction(playerId){
 
 function filterAdminLiveList(){
   const q = document.getElementById('adm-live-search').value.toLowerCase().trim();
-  document.querySelectorAll('#adm-live-player-list .pl-item').forEach(el=>{
-    el.style.display = (!q || el.dataset.name.includes(q)) ? '' : 'none';
+  document.querySelectorAll('.live-pool-group').forEach(groupEl=>{
+    const key = groupEl.dataset.pool;
+    const items = groupEl.querySelectorAll('.pl-item');
+    const body = groupEl.querySelector('.live-pool-body');
+    const chev = groupEl.querySelector('.live-pool-chev');
+    let anyMatch = false;
+    items.forEach(el=>{
+      const match = !q || el.dataset.name.includes(q);
+      el.style.display = match ? '' : 'none';
+      if(match) anyMatch = true;
+    });
+    if(q){
+      groupEl.style.display = anyMatch ? '' : 'none';
+      body.style.display = anyMatch ? 'flex' : 'none';
+      if(chev) chev.style.transform = anyMatch ? 'rotate(180deg)' : 'rotate(0deg)';
+    } else {
+      groupEl.style.display = '';
+      const isOpen = _liveOpenPools.has(key);
+      body.style.display = isOpen ? 'flex' : 'none';
+      if(chev) chev.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+    }
   });
 }
+
 
 function adminSelectPlayer(playerId){
   if(!requireConn()) return;
