@@ -2048,14 +2048,32 @@ async function clearAll(){
 
 async function exportCSV(){
   if(!requireConn()) return;
-  const ps = await getP();
-  if(!ps.length){toast('No data','error');return;}
+  const q  = (document.getElementById('search-box')?.value||'').toLowerCase();
+  const fc = document.getElementById('filter-category')?.value||'';
+  const fl = document.getElementById('filter-level')?.value||'';
+  const ff = document.getElementById('filter-foreign')?.value||'';
+  let ps;
+  try { ps = await getP(); } catch(e){ toast('Error loading players','error'); return; }
+  const data = ps.filter(p=>{
+    const m=!q||p.name.toLowerCase().includes(q)||p.flat.toLowerCase().includes(q)||(p.mobile||'').includes(q);
+    let catMatch = true;
+    if(fc==='Male')        catMatch = p.gender==='Male' && !p.isKid;
+    else if(fc==='Female') catMatch = p.gender==='Female' && !p.isKid;
+    else if(fc==='Kids')   catMatch = !!p.isKid;
+    else if(fc==='Owners') catMatch = !!p.isOwner;
+    let foreignMatch = true;
+    if(ff==='Y')      foreignMatch = !!p.isForeign;
+    else if(ff==='N') foreignMatch = !p.isForeign;
+    return m&&catMatch&&foreignMatch&&(!fl||p.level===fl);
+  });
+  if(!data.length){toast('No data matches the current filters','error');return;}
   const h=['#','Name','Flat','Mobile','Gender','Level','Base Pts','Owner','Marquee','Foreign','Registered'];
-  const rows=ps.map((p,i)=>[i+1,p.name,p.flat,p.mobile,p.gender,p.level,p.basePts??'',p.isOwner?'Yes':'No',p.isMarquee?'Yes':'No',p.isForeign?'Yes':'No',p.registeredAt]);
+  const rows=data.map((p,i)=>[i+1,p.name,p.flat,p.mobile,p.gender,p.level,p.basePts??'',p.isOwner?'Yes':'No',p.isMarquee?'Yes':'No',p.isForeign?'Yes':'No',p.registeredAt]);
   const csv=[h,...rows].map(r=>r.map(v=>'"'+v+'"').join(',')).join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download='DE_Rajyotsava_Cup_Players.csv'; a.click();
+  const catLabel = {Male:'Men', Female:'Women', Kids:'Kids', Owners:'Owners'}[fc];
+  a.download='DE_Rajyotsava_Cup_Players'+(catLabel?('_'+catLabel):'')+'.csv'; a.click();
   toast('CSV exported!','success');
 }
 
