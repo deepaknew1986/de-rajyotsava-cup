@@ -1021,11 +1021,15 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <label>Gender</label>
         <select id="edit-gender"><option>Male</option><option>Female</option></select>
       </div>
-      <div class="field full">
+      <div class="field">
         <label>Proficiency Level</label>
         <select id="edit-level">
           <option>Advanced</option><option>Intermediate+</option><option>Intermediate</option><option>Beginner</option>
         </select>
+      </div>
+      <div class="field">
+        <label>Foreign Player</label>
+        <select id="edit-foreign"><option value="N">Local (DE Apartments)</option><option value="Y">Foreign</option></select>
       </div>
       <div class="field full">
         <label>Profile Photo</label>
@@ -1954,6 +1958,7 @@ async function openEdit(id){
   document.getElementById('edit-flat').value  = p.flat;
   document.getElementById('edit-mobile').value= p.mobile;
   document.getElementById('edit-gender').value= p.gender;
+  document.getElementById('edit-foreign').value= p.isForeign ? 'Y' : 'N';
   document.getElementById('edit-level').value = p.level;
   // Show current photo or placeholder
   const prev = document.getElementById('edit-photo-preview');
@@ -1982,19 +1987,21 @@ async function saveEdit(){
   const existing = ps.find(x=>x.id===_editId);
   const newGender = document.getElementById('edit-gender').value;
   const newLevel  = document.getElementById('edit-level').value;
+  const newForeign = document.getElementById('edit-foreign').value==='Y';
   const body={
     name:   document.getElementById('edit-name').value.trim(),
     flat:   document.getElementById('edit-flat').value.trim(),
     mobile: document.getElementById('edit-mobile').value.trim(),
     gender: newGender,
     level:  newLevel,
+    is_foreign: newForeign,
   };
   // Recalculate base price so it always matches the saved level/foreign status
   // (Female/Kid players never get a base price — v3.28 rule)
   if(existing && !existing.isKid){
     if(newGender==='Male'){
       const rules = await getBpRules();
-      const match = matchBpRuleFor(rules, newLevel, existing.isForeign);
+      const match = matchBpRuleFor(rules, newLevel, newForeign);
       body.base_pts = match ? match.price : null;
     } else {
       body.base_pts = null;
