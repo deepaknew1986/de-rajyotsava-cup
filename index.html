@@ -454,9 +454,16 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <div class="sec-dot"></div>
       <div class="sec-title">Register to Play</div>
       <div class="sec-line"></div>
-      <div class="badge"><div class="badge-dot"></div><span>Open</span></div>
+      <div class="badge" id="reg-status-badge"><div class="badge-dot"></div><span>Open</span></div>
     </div>
 
+    <div id="reg-closed-msg" style="display:none;text-align:center;padding:3rem 1.5rem;">
+      <div style="font-size:40px;margin-bottom:1rem;">🏸</div>
+      <div style="font-family:'Cinzel',serif;font-size:20px;color:var(--gold);margin-bottom:0.5rem;">Registration is Closed</div>
+      <div style="color:var(--muted);font-size:14px;">Sorry, the registration window has closed. Please check back or contact the tournament admin.</div>
+    </div>
+
+    <div id="reg-content">
     <!-- Registration Sub-Tabs -->
     <div class="reg-tabs">
       <button class="reg-tab active" onclick="switchRegTab('adult')">Adult</button>
@@ -566,6 +573,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <button type="submit" class="btn-primary" id="kid-reg-btn">Register Kid for the Tournament</button>
       </form>
     </div>
+    </div>
   </div>
 
   <!-- ── AUCTION PAGE ── -->
@@ -661,6 +669,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <div class="sec-line"></div>
       <div id="season-switcher" style="display:flex;align-items:center;gap:8px;"></div>
       <button class="btn-sm" id="admin-refresh-btn" onclick="refreshCurrentAdminTab()" title="Refresh this tab"><span id="admin-refresh-icon">&#8635;</span> Refresh</button>
+      <button class="btn-sm" id="reg-toggle-btn" onclick="toggleRegistration()">Registration: …</button>
       <button class="btn-sm danger" onclick="adminLogout()">Logout</button>
     </div>
 
@@ -1210,7 +1219,8 @@ function dbToAuction(r){
     bidLeader: r.bid_leader||null,
     bidHistory: r.bid_history||[],
     youtubeVideoId: r.youtube_video_id||null,
-    youtubeChannelId: r.youtube_channel_id||null
+    youtubeChannelId: r.youtube_channel_id||null,
+    registrationOpen: r.registration_open!==false
   };
 }
 
@@ -1269,6 +1279,7 @@ async function saveA(a, season){
     bid_history: a.bidHistory||[],
     youtube_video_id: a.youtubeVideoId||null,
     youtube_channel_id: a.youtubeChannelId||null,
+    registration_open: a.registrationOpen!==false,
     updated_at: new Date().toISOString()
   });
 }
@@ -1307,11 +1318,39 @@ function gotoPage(id){
   document.querySelectorAll('.nav-btn')[idx]?.classList.add('active');
   if(id!=='auction') stopLiveAuctionPoll();
   if(id!=='registered') stopRegisteredPoll();
+  if(id!=='reg') stopRegStatusPoll();
   if(id==='auction') initAuction();
   if(id==='registered'){ renderRegisteredPlayers(); startRegisteredPoll(); }
+  if(id==='reg'){ checkRegistrationStatus(); startRegStatusPoll(); }
   if(id==='teams') renderTeamsPage();
   if(id==='schedule') renderSchedule();
   if(id==='gallery') renderGallery();
+}
+
+let _regStatusPollTimer=null;
+function startRegStatusPoll(){
+  stopRegStatusPoll();
+  _regStatusPollTimer = setInterval(checkRegistrationStatus, 3000);
+}
+function stopRegStatusPoll(){
+  if(_regStatusPollTimer){ clearInterval(_regStatusPollTimer); _regStatusPollTimer=null; }
+}
+
+async function checkRegistrationStatus(){
+  if(!_connected) return;
+  const a = (await getA().catch(()=>null)) || {registrationOpen:true};
+  const open = a.registrationOpen!==false;
+  const badge = document.getElementById('reg-status-badge');
+  const content = document.getElementById('reg-content');
+  const closedMsg = document.getElementById('reg-closed-msg');
+  if(badge){
+    badge.querySelector('span').textContent = open ? 'Open' : 'Closed';
+    badge.style.color = open ? 'var(--green)' : 'var(--red)';
+    const dot = badge.querySelector('.badge-dot');
+    if(dot) dot.style.background = open ? 'var(--green)' : 'var(--red)';
+  }
+  if(content) content.style.display = open ? '' : 'none';
+  if(closedMsg) closedMsg.style.display = open ? 'none' : 'block';
 }
 
 /* ══════════════════════════════════════════════
@@ -1420,6 +1459,28 @@ async function loadAdminPage(){
   await updateStats();
   await renderTeams();
   await renderBpRules();
+  await renderRegToggleBtn();
+}
+
+async function renderRegToggleBtn(){
+  const btn = document.getElementById('reg-toggle-btn');
+  if(!btn || !_connected) return;
+  const a = (await getA()) || {registrationOpen:true};
+  const open = a.registrationOpen!==false;
+  btn.textContent = 'Registration: '+(open?'ON':'OFF');
+  btn.style.color = open ? 'var(--green)' : 'var(--red)';
+  btn.style.borderColor = open ? 'rgba(60,210,130,0.5)' : 'rgba(192,80,96,0.5)';
+}
+
+async function toggleRegistration(){
+  if(!requireConn()) return;
+  const a = (await getA()) || {pool:[],curBidId:null,curBid:0,bidLeader:null,bidHistory:[]};
+  a.registrationOpen = !(a.registrationOpen!==false);
+  try{
+    await saveA(a);
+    toast('Registration is now '+(a.registrationOpen?'OPEN':'CLOSED'), a.registrationOpen?'success':'error');
+    await renderRegToggleBtn();
+  } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
 /* ══════════════════════════════════════════════
@@ -1582,6 +1643,12 @@ function validateMobile(mobile){
 async function submitReg(e){
   e.preventDefault();
   if(!requireConn()) return;
+  const a = (await getA().catch(()=>null)) || {registrationOpen:true};
+  if(a.registrationOpen===false){
+    toast('Sorry, registration is closed.','error');
+    checkRegistrationStatus();
+    return;
+  }
   const btn=document.getElementById('reg-btn');
   btn.disabled=true; btn.textContent='Registering…';
   const name      = document.getElementById('f-name').value.trim();
@@ -1660,6 +1727,12 @@ function previewKidPhoto(event){
 async function submitKidReg(e){
   e.preventDefault();
   if(!requireConn()) return;
+  const a = (await getA().catch(()=>null)) || {registrationOpen:true};
+  if(a.registrationOpen===false){
+    toast('Sorry, registration is closed.','error');
+    checkRegistrationStatus();
+    return;
+  }
   const btn = document.getElementById('kid-reg-btn');
   btn.disabled=true; btn.textContent='Registering…';
   const name      = document.getElementById('k-name').value.trim();
@@ -3278,12 +3351,17 @@ testConnection().then(async ok=>{
   renderConnBanner();
   if(ok) toast('Connected to Supabase!','success');
   else toast('Could not connect to database. Check your network.','error');
+  if(ok && document.getElementById('page-reg')?.classList.contains('active')){
+    checkRegistrationStatus();
+    startRegStatusPoll();
+  }
 });
 function closePage(){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn-3d').forEach(b=>b.classList.remove('active'));
   document.getElementById('site').style.display='none';
   document.getElementById('page-landing').style.display='flex';
+  stopRegStatusPoll(); stopLiveAuctionPoll(); stopRegisteredPoll();
   window.scrollTo(0,0);
 }
 </script>
