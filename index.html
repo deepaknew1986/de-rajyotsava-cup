@@ -2486,11 +2486,24 @@ async function renderBpRules(){
       <td style="color:var(--muted)">${i+1}</td>
       <td>${lLabel}</td>
       <td>${fLabel}</td>
-      <td><span style="display:inline-block;background:rgba(255,216,77,0.16);border:1px solid rgba(255,216,77,0.4);border-radius:4px;padding:4px 12px;font-family:'Cinzel',serif;color:var(--gold);font-size:14px;font-weight:700;letter-spacing:0.5px;">${r.price} pts</span></td>
+      <td><div class="pts-cell"><input class="pts-input" type="number" value="${r.price}" id="bp-price-${r.id}" min="0" max="10000"/><button class="pts-save" onclick="updateBpRule('${r.id}')">&#10003;</button></div></td>
       <td style="color:var(--muted2);">${affected} player${affected!==1?'s':''}</td>
       <td><button class="act-btn del" onclick="deleteBpRule('${r.id}')">✕ Remove</button></td>
     </tr>`;
   }).join('');
+}
+
+async function updateBpRule(id){
+  if(!requireConn()) return;
+  const v = document.getElementById('bp-price-'+id)?.value;
+  if(v===''||v==null){toast('Please enter a base price value','error');return;}
+  const n = parseInt(v); if(isNaN(n)||n<0){toast('Invalid price','error');return;}
+  try{
+    await sbUpdate('bp_rules',{price:n},`id=eq.${id}`);
+    await applyBpRules();
+    await renderBpRules(); await renderAdminTable();
+    toast('Base price updated — matching players recalculated ✓','success');
+  } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
 /* ══════════════════════════════════════════════
