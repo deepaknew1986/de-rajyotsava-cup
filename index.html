@@ -831,6 +831,8 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 
       <div id="adm-unsold-section" style="margin-top:1.5rem;"></div>
 
+      <div id="adm-live-team-budgets" style="display:flex;gap:10px;margin-top:1.5rem;flex-wrap:wrap;"></div>
+
       <div id="adm-live-spotlight-wrap" style="position:relative;margin-top:1.5rem;">
         <div class="sold-flash" id="adm-live-sold-flash"></div>
         <div class="sold-banner" id="adm-live-sold-banner"></div>
@@ -2546,9 +2548,26 @@ function computeTeamAcquisitions(ps, t){
   );
   const autoSpent = auto.reduce((s,x)=>s+x.pts, 0);
   const aucSpent  = auc.reduce((s,p)=>s+(p.finalPts||0), 0);
-  const spent = autoSpent + aucSpent;
+  const marqueeBonus = computeMarqueeBonusInfo(auto, auc);
+  const spent = autoSpent + aucSpent + marqueeBonus.total;
   const remaining = BUDGET - spent;
-  return {auto, auc, spent, remaining};
+  return {auto, auc, spent, remaining, marqueeBonus};
+}
+
+// The Local + Advanced Marquee player's price climbs as their own team buys other
+// players: every acquisition (bid or leftover) whose final price is >= the Marquee's
+// own base price adds 10% of that purchase's price as a bonus, on top of everything else.
+function computeMarqueeBonusInfo(auto, auc){
+  const marqueeEntry = auto.find(x=>x.role==='Marquee');
+  const mp = marqueeEntry ? marqueeEntry.p : null;
+  if(!mp || mp.isForeign || mp.level!=='Advanced' || mp.basePts==null){
+    return {marqueePlayer:null, total:0, qualifying:[]};
+  }
+  const qualifying = auc.filter(p=>(p.finalPts||0) >= mp.basePts).map(p=>({
+    player:p, bonus: Math.round(0.10*(p.finalPts||0))
+  }));
+  const total = qualifying.reduce((s,q)=>s+q.bonus, 0);
+  return {marqueePlayer:mp, total, qualifying};
 }
 
 async function renderTeamsPage(){
@@ -2563,20 +2582,23 @@ async function renderTeamsPage(){
   let hPts=0,hId=null;
   soldPs.forEach(p=>{if((p.finalPts||0)>hPts){hPts=p.finalPts;hId=p.id;}});
   el.innerHTML=tms.map(t=>{
-    const {auto, auc, spent, remaining} = computeTeamAcquisitions(ps, t);
+    const {auto, auc, spent, remaining, marqueeBonus} = computeTeamAcquisitions(ps, t);
     const budgetColor = remaining > 7000 ? 'var(--green)' : remaining > 4000 ? 'var(--amber)' : 'var(--red)';
     const rows=[
-      ...auto.map(({p,role,pts})=>`<div class="auc-player-row">
+      ...auto.map(({p,role,pts})=>{
+        const isBonusMarquee = role==='Marquee' && marqueeBonus.marqueePlayer && marqueeBonus.marqueePlayer.id===p.id && marqueeBonus.total>0;
+        return `<div class="auc-player-row">
         <div class="auc-pl-photo">${p.photoUrl?`<img src="${p.photoUrl}" alt="${p.name}"/>`:'&#128100;'}</div>
         <div style="flex:1;min-width:0;">
           <div class="auc-pl-name">${p.name}${p.isForeign?' &#9992;':''}</div>
           <div class="auc-pl-role">${role} · ${p.level}</div>
         </div>
         <div class="auc-pl-prices">
-          <div class="auc-pl-base">${pts} pts</div>
+          <div class="auc-pl-base">${isBonusMarquee ? `${pts} + ${marqueeBonus.total} bonus = ${(pts+marqueeBonus.total).toLocaleString()} pts` : pts+' pts'}</div>
           <div class="auc-pl-final" style="color:var(--muted2);font-size:11px;">Auto-assigned</div>
         </div>
-      </div>`),
+      </div>`;
+      }),
       ...auc.map(p=>{
         const hi=p.id===hId;
         return`<div class="auc-player-row ${hi?'highest':''}">
@@ -2779,6 +2801,25 @@ async function initAuction(){
 ══════════════════════════════════════════════ */
 let _liveCache = {ps:[], tms:[], a:null};
 
+function renderAdminLiveTeamBudgets(){
+  const {ps, tms} = _liveCache;
+  const el = document.getElementById('adm-live-team-budgets');
+  if(!el) return;
+  el.innerHTML = tms.map(t=>{
+    const {remaining, marqueeBonus} = computeTeamAcquisitions(ps, t);
+    const color = remaining > 7000 ? 'var(--green)' : remaining > 4000 ? 'var(--amber)' : 'var(--red)';
+    const mq = marqueeBonus.marqueePlayer;
+    return `<div style="flex:1;min-width:170px;background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:8px;padding:10px 14px;">
+      <div style="font-family:'Cinzel',serif;font-size:13px;color:var(--gold);margin-bottom:2px;">${t.name}</div>
+      <div style="font-size:11px;color:${color};margin-bottom:${mq?'8px':'0'};">${remaining.toLocaleString()} pts left</div>
+      ${mq ? `<div style="border-top:1px solid rgba(255,216,77,0.12);padding-top:6px;">
+        <div style="font-size:9px;letter-spacing:1px;color:var(--muted2);text-transform:uppercase;margin-bottom:2px;">Marquee — ${mq.name}</div>
+        <div style="font-size:11px;color:var(--muted2);">Base ${mq.basePts} <span style="color:var(--gold);">+${marqueeBonus.total.toLocaleString()} bonus</span></div>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
 async function renderAdminLiveAuction(){
   if(!requireConn()) return;
   _liveCache.ps = await getP();
@@ -2788,6 +2829,7 @@ async function renderAdminLiveAuction(){
   if(ytInput) ytInput.value = _liveCache.a.youtubeVideoId || _liveCache.a.youtubeChannelId || '';
   renderAdminLivePlayerList();
   renderAdminLiveSpotlight();
+  renderAdminLiveTeamBudgets();
   renderLeftoverSection();
 }
 
@@ -3049,14 +3091,16 @@ function renderLeftoverPreview(){
     btn.disabled = true;
     return;
   }
-  const {remaining} = computeTeamAcquisitions(ps, team);
-  const overBudget = remaining < price;
+  const {remaining, marqueeBonus} = computeTeamAcquisitions(ps, team);
+  const wouldAddBonus = (marqueeBonus.marqueePlayer && price >= marqueeBonus.marqueePlayer.basePts) ? Math.round(0.10*price) : 0;
+  const overBudget = remaining < price + wouldAddBonus;
   previewEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,216,77,0.06);border:1px solid ${overBudget?'rgba(192,80,96,0.4)':'rgba(255,216,77,0.25)'};border-radius:6px;padding:12px 16px;">
       <div>
         <div style="font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">Computed price</div>
         <div style="font-size:11px;color:var(--muted2);margin-top:2px;">${player.basePts} base + ${Math.round(bucket.pct*100)}% of ${highest.toLocaleString()} (pool high)</div>
-        ${overBudget ? `<div style="font-size:11px;color:var(--red);margin-top:4px;">${team.name} only has ${remaining.toLocaleString()} pts remaining — not enough.</div>` : ''}
+        ${wouldAddBonus ? `<div style="font-size:11px;color:var(--gold);margin-top:4px;">Also triggers +${wouldAddBonus.toLocaleString()} pts for ${marqueeBonus.marqueePlayer.name} (${team.name}'s Advanced Marquee).</div>` : ''}
+        ${overBudget ? `<div style="font-size:11px;color:var(--red);margin-top:4px;">${team.name} only has ${remaining.toLocaleString()} pts remaining — not enough${wouldAddBonus?' once the Marquee bonus is included':''}.</div>` : ''}
       </div>
       <div style="font-family:'Cinzel',serif;font-size:26px;font-weight:900;color:${overBudget?'var(--red)':'var(--gold)'};">${price.toLocaleString()} pts</div>
     </div>`;
@@ -3075,11 +3119,14 @@ async function confirmLeftoverAssignment(){
   const highest = bucketHighest(ps, bucket);
   const price = computeLeftoverPrice(player, highest);
   if(price==null){ toast('No reference price available for this pool yet.','error'); return; }
-  const {remaining} = computeTeamAcquisitions(ps, team);
-  if(remaining < price){ toast(team.name+' does not have enough remaining budget for this assignment.','error'); return; }
+  const {remaining, marqueeBonus} = computeTeamAcquisitions(ps, team);
+  const wouldAddBonus = (marqueeBonus.marqueePlayer && price >= marqueeBonus.marqueePlayer.basePts) ? Math.round(0.10*price) : 0;
+  if(remaining < price + wouldAddBonus){ toast(team.name+' does not have enough remaining budget for this assignment.','error'); return; }
   try{
     await savePlayerField(playerId, {final_pts:price, sold_to_team:teamId, unsold:false, is_leftover:true});
-    toast(player.name+' assigned to '+team.name+' at '+price.toLocaleString()+' pts.','success');
+    let msg = player.name+' assigned to '+team.name+' at '+price.toLocaleString()+' pts.';
+    if(wouldAddBonus) msg += ' (+'+wouldAddBonus.toLocaleString()+' pts added to '+marqueeBonus.marqueePlayer.name+')';
+    toast(msg,'success');
     document.getElementById('lo-player-sel').value = '';
     document.getElementById('lo-team-sel').value = '';
     await renderAdminLiveAuction();
@@ -3106,8 +3153,9 @@ function adminPlaceBid(teamId){
   const p = ps.find(x=>x.id===a.curBidId);
   const team = tms.find(t=>t.id===teamId);
   const newBid = a.bidLeader===null ? (p.basePts||0) : a.curBid + 50;
-  const {remaining} = computeTeamAcquisitions(ps, team);
-  if(remaining < newBid){ toast(team.name+' does not have enough remaining budget for this bid.','error'); return; }
+  const {remaining, marqueeBonus} = computeTeamAcquisitions(ps, team);
+  const wouldAddBonus = (marqueeBonus.marqueePlayer && newBid >= marqueeBonus.marqueePlayer.basePts) ? Math.round(0.10*newBid) : 0;
+  if(remaining < newBid + wouldAddBonus){ toast(team.name+' does not have enough remaining budget for this bid.','error'); return; }
   a.curBid = newBid;
   a.bidLeader = teamId;
   a.bidHistory = a.bidHistory||[];
@@ -3155,7 +3203,13 @@ async function adminFinalizeSale(){
     const flash = document.getElementById('adm-live-sold-flash');
     const banner = document.getElementById('adm-live-sold-banner');
     flash.classList.remove('show'); void flash.offsetWidth; flash.classList.add('show');
-    banner.innerHTML = `${p.name}<br>SOLD to <b>${team.name}</b> for <b>${a.curBid.toLocaleString()} pts</b>`;
+    let bannerHtml = `${p.name}<br>SOLD to <b>${team.name}</b> for <b>${a.curBid.toLocaleString()} pts</b>`;
+    const {marqueeBonus} = computeTeamAcquisitions(ps, team);
+    if(marqueeBonus.marqueePlayer && a.curBid >= marqueeBonus.marqueePlayer.basePts){
+      const addedBonus = Math.round(0.10*a.curBid);
+      bannerHtml += `<br><span style="font-size:13px;color:var(--gold);">+${addedBonus.toLocaleString()} pts added to ${marqueeBonus.marqueePlayer.name}</span>`;
+    }
+    banner.innerHTML = bannerHtml;
     banner.classList.add('show');
     spawnLiveConfetti();
     const soldBid = a.curBid;
