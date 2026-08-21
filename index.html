@@ -186,6 +186,10 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 .sold-banner{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);background:rgba(10,30,15,0.95);border:2px solid var(--green);color:var(--green);font-family:'Cinzel',serif;font-weight:700;font-size:17px;letter-spacing:0.5px;padding:16px 28px;border-radius:10px;opacity:0;transition:opacity .3s;white-space:nowrap;z-index:5;text-align:center;}
 .sold-banner b{color:var(--gold);}
 .sold-banner.show{opacity:1;}
+.pool-complete-banner{max-height:0;overflow:hidden;opacity:0;transition:max-height .4s ease,opacity .4s ease,margin .4s ease;background:rgba(60,210,130,0.1);border:1px solid rgba(60,210,130,0.4);border-radius:10px;text-align:center;}
+.pool-complete-banner.show{max-height:120px;opacity:1;margin-bottom:1.25rem;padding:18px;}
+.pool-complete-banner .pcb-icon{font-size:24px;margin-bottom:4px;}
+.pool-complete-banner .pcb-text{font-family:'Cinzel',serif;font-size:16px;color:var(--green);font-weight:700;}
 .live-confetti{position:fixed;top:-20px;width:8px;height:14px;opacity:0.9;pointer-events:none;z-index:999;}
 @keyframes liveConfettiFall{to{transform:translateY(110vh) rotate(540deg);opacity:0;}}
 
@@ -594,6 +598,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       </div>
       <div id="live-video-wrap"></div>
       <div id="live-team-budgets" style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;"></div>
+      <div id="live-pool-complete-banner" class="pool-complete-banner"></div>
       <div id="live-spotlight-wrap" style="position:relative;">
         <div class="sold-flash" id="live-sold-flash"></div>
         <div class="sold-banner" id="live-sold-banner"></div>
@@ -1220,7 +1225,8 @@ function dbToAuction(r){
     bidHistory: r.bid_history||[],
     youtubeVideoId: r.youtube_video_id||null,
     youtubeChannelId: r.youtube_channel_id||null,
-    registrationOpen: r.registration_open!==false
+    registrationOpen: r.registration_open!==false,
+    completedPools: r.completed_pools||[]
   };
 }
 
@@ -1280,6 +1286,7 @@ async function saveA(a, season){
     youtube_video_id: a.youtubeVideoId||null,
     youtube_channel_id: a.youtubeChannelId||null,
     registration_open: a.registrationOpen!==false,
+    completed_pools: a.completedPools||[],
     updated_at: new Date().toISOString()
   });
 }
@@ -2721,6 +2728,7 @@ async function renderTeamsPage(){
 let _liveAuctionPollTimer = null;
 function startLiveAuctionPoll(){
   stopLiveAuctionPoll();
+  _knownCompletedPools = null;
   _liveAuctionPollTimer = setInterval(renderLiveAuctionPublic, 3000);
 }
 function stopLiveAuctionPoll(){
@@ -2822,6 +2830,34 @@ function renderLiveVideoEmbed(videoId, channelId){
   </div>`;
 }
 
+// null = baseline not yet established (avoids flashing for pools that were already
+// complete before this visitor arrived on the page).
+let _knownCompletedPools = null;
+let _poolBannerTimer = null;
+
+function detectNewlyCompletedPools(a){
+  const cur = (a && a.completedPools) || [];
+  if(_knownCompletedPools===null){
+    _knownCompletedPools = new Set(cur);
+    return;
+  }
+  const newlyCompleted = cur.filter(k=>!_knownCompletedPools.has(k));
+  if(newlyCompleted.length){
+    const def = LIVE_POOL_DEFS.find(d=>d.key===newlyCompleted[newlyCompleted.length-1]);
+    if(def) showPoolCompleteBanner(def);
+  }
+  _knownCompletedPools = new Set(cur);
+}
+
+function showPoolCompleteBanner(def){
+  const banner = document.getElementById('live-pool-complete-banner');
+  if(!banner) return;
+  banner.innerHTML = `<div class="pcb-icon">&#127993;</div><div class="pcb-text">${def.label} &mdash; Pool Completed</div>`;
+  banner.classList.add('show');
+  clearTimeout(_poolBannerTimer);
+  _poolBannerTimer = setTimeout(()=>{ banner.classList.remove('show'); }, 10000);
+}
+
 async function renderLiveAuctionPublic(){
   if(!_connected) return;
   const ps = await getP();
@@ -2838,6 +2874,7 @@ async function renderLiveAuctionPublic(){
     }).join('');
   }
   const a = await getA();
+  detectNewlyCompletedPools(a);
   renderLiveVideoEmbed(a ? a.youtubeVideoId : null, a ? a.youtubeChannelId : null);
   const cardEl = document.getElementById('live-spotlight-card');
   if(!cardEl) return;
@@ -2849,12 +2886,14 @@ async function renderLiveAuctionPublic(){
   if(!p){ cardEl.innerHTML = '<div class="empty" style="padding:3rem 1rem;">Player not found.</div>'; return; }
   const leaderTeam = tms.find(t=>t.id===a.bidLeader);
   const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const pool = poolForPlayer(p);
   cardEl.innerHTML = `
     <div style="text-align:center;padding:1.5rem 1rem;">
       <div style="width:500px;height:500px;max-width:90vw;max-height:90vw;border-radius:50%;background:rgba(255,216,77,0.1);border:3px solid rgba(255,216,77,0.35);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:140px;color:var(--gold);margin:0 auto 14px;overflow:hidden;box-shadow:0 0 30px rgba(255,216,77,0.15);">
         ${p.photoUrl?`<img src="${p.photoUrl}" style="width:100%;height:100%;object-fit:cover;image-rendering:high-quality;"/>`:initials}
       </div>
       <div style="font-family:'Cinzel',serif;font-weight:700;font-size:26px;color:var(--gold);margin-bottom:4px;">${p.name}</div>
+      ${pool?`<div style="margin-bottom:6px;"><span class="tag ${pool.tagClass}">${pool.label}</span></div>`:''}
       <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">${p.level} · Base ${p.basePts??'—'} pts</div>
       <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Current bid</div>
       <div style="font-family:'Cinzel',serif;font-size:38px;font-weight:900;color:var(--gold);">${(a.curBid||0).toLocaleString()} pts</div>
@@ -2948,6 +2987,7 @@ const LIVE_POOL_DEFS = [
   {key:'lint', label:'Local Intermediate', tagClass:'int', match:p=>!p.isForeign && p.level==='Intermediate'},
   {key:'lbeg', label:'Local Beginner', tagClass:'beg', match:p=>!p.isForeign && p.level==='Beginner'}
 ];
+function poolForPlayer(p){ return LIVE_POOL_DEFS.find(d=>d.match(p)) || null; }
 let _liveOpenPools = new Set(['fadv']);
 
 function toggleLivePool(key){
@@ -2958,35 +2998,77 @@ function toggleLivePool(key){
 
 function renderAdminLivePlayerList(){
   const {ps, a} = _liveCache;
-  const eligible = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && !p.unsold && p.gender==='Male' && !p.isKid && p.id!==(a&&a.curBidId));
+  const completedPools = (a && a.completedPools) || [];
   const listEl = document.getElementById('adm-live-player-list');
   listEl.className = '';
-  if(!eligible.length){
-    listEl.innerHTML = '<div class="empty" style="padding:1rem;">No players left to auction — everyone remaining is either sold, unsold, currently spotlighted, or already an owner/marquee.</div>';
-    renderUnsoldPlayersList();
-    return;
-  }
-  listEl.innerHTML = LIVE_POOL_DEFS.map(def=>{
-    const group = eligible.filter(def.match);
-    if(!group.length) return '';
+  const html = LIVE_POOL_DEFS.map(def=>{
+    const poolHasAnyPlayers = ps.some(p=>!p.isOwner && !p.isMarquee && p.gender==='Male' && !p.isKid && def.match(p));
+    if(!poolHasAnyPlayers) return '';
+    const isCompleted = completedPools.includes(def.key);
+    // Anyone in this pool without a team yet — includes the normal queue, whoever's
+    // currently spotlighted, and anyone marked Unsold. Only when this is zero can
+    // the pool actually be marked complete.
+    const outstanding = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && p.gender==='Male' && !p.isKid && def.match(p));
+    const selectable = outstanding.filter(p=>!p.unsold && p.id!==(a&&a.curBidId));
+    const unsoldCount = outstanding.filter(p=>p.unsold).length;
     const isOpen = _liveOpenPools.has(def.key);
+    let actionHtml;
+    if(isCompleted){
+      actionHtml = `<button class="btn-sm" style="color:var(--red);border-color:rgba(192,80,96,0.5);" onclick="event.stopPropagation();togglePoolComplete('${def.key}')">&#8634; Unmark Complete</button>`;
+    } else if(outstanding.length===0){
+      actionHtml = `<button class="btn-sm" style="color:var(--green);border-color:rgba(60,210,130,0.5);" onclick="event.stopPropagation();togglePoolComplete('${def.key}')">&#10003; Mark Pool Complete</button>`;
+    } else {
+      actionHtml = `<span style="font-size:10px;color:var(--muted2);" title="Every player in this pool must be sold, leftover-assigned, or otherwise resolved before it can be marked complete.">${outstanding.length} unresolved${unsoldCount?' ('+unsoldCount+' Unsold)':''}</span>`;
+    }
     return `<div class="live-pool-group" data-pool="${def.key}">
       <div class="live-pool-header" onclick="toggleLivePool('${def.key}')">
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="tag ${def.tagClass}">${def.label}</span>
-          <span style="font-size:10px;color:var(--muted2);">${group.length} player${group.length!==1?'s':''}</span>
+          ${isCompleted?'<span style="font-size:10px;color:var(--green);">&#10003; Completed</span>':`<span style="font-size:10px;color:var(--muted2);">${selectable.length} player${selectable.length!==1?'s':''}</span>`}
         </div>
-        <span class="live-pool-chev" style="transform:rotate(${isOpen?180:0}deg);">&#9660;</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${actionHtml}
+          <span class="live-pool-chev" style="transform:rotate(${isOpen?180:0}deg);">&#9660;</span>
+        </div>
       </div>
       <div class="live-pool-body" style="display:${isOpen?'flex':'none'};">
-        ${group.map(p=>`<div class="pl-item" onclick="adminSelectPlayer('${p.id}')" data-name="${p.name.toLowerCase()}">
+        ${selectable.length ? selectable.map(p=>`<div class="pl-item" onclick="adminSelectPlayer('${p.id}')" data-name="${p.name.toLowerCase()}">
           <span class="pl-name">${p.name}</span><span class="pl-badge">${p.basePts??'—'} pts</span>
-        </div>`).join('')}
+        </div>`).join('') : '<div style="font-size:11px;color:var(--muted2);padding:4px 0;">No players currently selectable in this pool.</div>'}
       </div>
     </div>`;
   }).join('');
+  listEl.innerHTML = html || '<div class="empty" style="padding:1rem;">No players left to auction — everyone remaining is either sold, unsold, currently spotlighted, or already an owner/marquee.</div>';
   filterAdminLiveList();
   renderUnsoldPlayersList();
+}
+
+async function togglePoolComplete(key){
+  if(!requireConn()) return;
+  const {ps, a} = _liveCache;
+  const def = LIVE_POOL_DEFS.find(d=>d.key===key);
+  const completedPools = (a.completedPools||[]).slice();
+  const idx = completedPools.indexOf(key);
+  if(idx>=0){
+    completedPools.splice(idx,1);
+    a.completedPools = completedPools;
+    try{ await saveA(a); toast(def.label+' unmarked — pool reopened.'); await renderAdminLiveAuction(); }
+    catch(e){ toast('Error: '+e.message,'error'); }
+    return;
+  }
+  // Safety re-check right before marking complete, in case something changed since render.
+  const outstanding = ps.filter(p=>!p.isOwner && !p.isMarquee && !p.soldToTeam && p.gender==='Male' && !p.isKid && def.match(p));
+  if(outstanding.length>0){
+    toast(def.label+' still has '+outstanding.length+' unresolved player(s) — cannot mark complete.','error');
+    return;
+  }
+  completedPools.push(key);
+  a.completedPools = completedPools;
+  try{
+    await saveA(a);
+    toast(def.label+' marked complete!','success');
+    await renderAdminLiveAuction();
+  } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
 function renderUnsoldPlayersList(){
@@ -3044,7 +3126,13 @@ function filterAdminLiveList(){
 
 function adminSelectPlayer(playerId){
   if(!requireConn()) return;
-  const a = _liveCache.a;
+  const {ps, a} = _liveCache;
+  const p = ps.find(x=>x.id===playerId);
+  const pool = p ? poolForPlayer(p) : null;
+  if(pool && (a.completedPools||[]).includes(pool.key)){
+    toast(pool.label+' has already been marked complete — unmark it first if this was a mistake.','error');
+    return;
+  }
   a.curBidId = playerId; a.curBid = 0; a.bidLeader = null; a.bidHistory = [];
   document.getElementById('adm-live-search').value='';
   renderAdminLivePlayerList();
@@ -3065,6 +3153,7 @@ function renderAdminLiveSpotlight(){
   if(!p){ spotEl.innerHTML = '<div class="empty" style="padding:2rem;">Player not found.</div>'; ctrlEl.innerHTML=''; return; }
   const leaderTeam = tms.find(t=>t.id===a.bidLeader);
   const initials = p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const pool = poolForPlayer(p);
   spotEl.innerHTML = `
     <div style="position:relative;display:flex;gap:20px;align-items:center;flex-wrap:wrap;background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:12px;padding:20px;">
       <button onclick="cancelPlayerSelection()" title="Close (player becomes selectable again)" style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,0.35);border:1px solid rgba(255,216,77,0.25);color:var(--red);font-size:13px;line-height:24px;text-align:center;cursor:pointer;padding:0;">&#10005;</button>
@@ -3073,6 +3162,7 @@ function renderAdminLiveSpotlight(){
       </div>
       <div style="flex:1;min-width:180px;">
         <div style="font-family:'Cinzel',serif;font-weight:700;font-size:20px;color:var(--gold);">${p.name}</div>
+        ${pool?`<span class="tag ${pool.tagClass}" style="margin:2px 0;display:inline-block;">${pool.label}</span><br/>`:''}
         <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">${p.level} · Base ${p.basePts??'—'} pts</div>
       </div>
       <div style="text-align:right;">
