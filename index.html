@@ -2788,17 +2788,42 @@ async function canStart(){
 }
 
 let _activeAdminTab = 'players';
+let _pageHiddenByDrawer = null;
+
 // Mobile hamburger menu (public site nav) — works for both the landing-page nav
 // and the persistent in-app nav, since both share this same markup pattern.
+// Opening the drawer hides whatever page/dashboard is currently showing (e.g. the
+// Admin Dashboard), so the drawer is the only thing visible — not stacked on top.
 function toggleMobileNav(e){
   if(!e) return;
   e.stopPropagation();
   const wrap = e.currentTarget.closest('.top-nav-wrap, .nav');
   const drawer = wrap ? wrap.nextElementSibling : null;
-  if(drawer && drawer.classList.contains('mobile-nav-drawer')) drawer.classList.toggle('open');
+  if(!drawer || !drawer.classList.contains('mobile-nav-drawer')) return;
+  const opening = !drawer.classList.contains('open');
+  drawer.classList.toggle('open');
+  if(opening){
+    const activePage = document.querySelector('.page.active');
+    _pageHiddenByDrawer = activePage ? activePage.id : null;
+    if(activePage) activePage.classList.remove('active');
+  } else {
+    restoreHiddenPage();
+  }
 }
+// Called from drawer buttons right before navigating — just closes the drawer.
+// The upcoming gotoPage()/showAdminPage() call sets the new active page itself,
+// so there's nothing to restore here.
 function closeMobileNav(){
   document.querySelectorAll('.mobile-nav-drawer').forEach(d=>d.classList.remove('open'));
+  _pageHiddenByDrawer = null;
+}
+// Called when the drawer is dismissed without picking anything (outside tap) —
+// brings back whatever page was showing before the drawer opened.
+function restoreHiddenPage(){
+  if(_pageHiddenByDrawer){
+    document.getElementById(_pageHiddenByDrawer)?.classList.add('active');
+  }
+  _pageHiddenByDrawer = null;
 }
 
 // Mobile dropdown for Admin sub-tabs
@@ -2815,7 +2840,10 @@ document.addEventListener('click', (e)=>{
   document.querySelectorAll('.mobile-nav-drawer.open').forEach(drawer=>{
     const wrap = drawer.previousElementSibling;
     const isHamburger = wrap && wrap.contains(e.target) && e.target.closest('.nav-hamburger');
-    if(!drawer.contains(e.target) && !isHamburger) drawer.classList.remove('open');
+    if(!drawer.contains(e.target) && !isHamburger){
+      drawer.classList.remove('open');
+      restoreHiddenPage();
+    }
   });
   const adminDrawer = document.getElementById('admin-tab-drawer');
   const adminToggle = document.querySelector('.admin-tab-dropdown-toggle');
