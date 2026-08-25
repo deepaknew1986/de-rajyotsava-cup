@@ -3029,12 +3029,22 @@ async function renderRegisteredPlayers(){
   else if(REGISTERED_SUBTAB==='men') eligible = eligible.filter(p=>!p.isKid && p.gender==='Male');
   else if(REGISTERED_SUBTAB==='women') eligible = eligible.filter(p=>!p.isKid && p.gender==='Female');
   if(!eligible.length){ el.innerHTML = '<div class="empty" style="padding:3rem 1rem;">No players currently available for auction.</div>'; return; }
-  const order = ['Advanced','Intermediate+','Intermediate','Beginner'];
-  el.innerHTML = order.map(level=>{
-    const group = eligible.filter(p=>p.level===level).sort((a,b)=>a.name.localeCompare(b.name));
+  // Men: split by Foreign/Local pool (matches the Admin auction pool grouping), since
+  // foreign men are only ever Advanced/Intermediate+ — the pool split is meaningful there.
+  // Women/Kids: foreign status doesn't map to a separate pool (they can be Foreign at
+  // any of their allowed levels), so group by level only; the airplane icon on each
+  // card still shows who's foreign.
+  const groupDefs = REGISTERED_SUBTAB==='men'
+    ? LIVE_POOL_DEFS
+    : [
+        {label:'Intermediate', tagClass:'int', match:p=>p.level==='Intermediate'},
+        {label:'Beginner',     tagClass:'beg', match:p=>p.level==='Beginner'}
+      ];
+  el.innerHTML = groupDefs.map(def=>{
+    const group = eligible.filter(def.match).sort((a,b)=>a.name.localeCompare(b.name));
     if(!group.length) return '';
     return `<div class="level-group">
-      <div class="level-group-header">${lvlTag(level)}<span class="level-group-count">${group.length} player${group.length!==1?'s':''}</span></div>
+      <div class="level-group-header"><span class="tag ${def.tagClass}">${def.label}</span><span class="level-group-count">${group.length} player${group.length!==1?'s':''}</span></div>
       <div class="pre-auc-grid">
         ${group.map(p=>{
           const initials = p.name ? p.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase() : '?';
