@@ -3107,6 +3107,8 @@ function renderLiveVideoEmbed(videoId, channelId){
 // complete before this visitor arrived on the page).
 let _knownCompletedPools = null;
 let _poolBannerTimer = null;
+let _knownSoldIds = null;
+let _saleBannerTimer = null;
 
 function detectNewlyCompletedPools(a){
   const cur = (a && a.completedPools) || [];
@@ -3131,6 +3133,35 @@ function showPoolCompleteBanner(def){
   _poolBannerTimer = setTimeout(()=>{ banner.classList.remove('show'); }, 10000);
 }
 
+// Detects a player getting sold_to_team set for the first time — covers both
+// live-bidding sales and leftover assignments — and celebrates it on the public
+// page, which today shows nothing at all when a sale happens.
+function detectNewSales(ps, tms){
+  const curSoldIds = new Set(ps.filter(p=>p.soldToTeam).map(p=>p.id));
+  if(_knownSoldIds===null){ _knownSoldIds = curSoldIds; return; }
+  const newlySold = [...curSoldIds].filter(id=>!_knownSoldIds.has(id));
+  _knownSoldIds = curSoldIds;
+  if(newlySold.length){
+    const p = ps.find(x=>x.id===newlySold[newlySold.length-1]);
+    const team = p ? tms.find(t=>t.id===p.soldToTeam) : null;
+    if(p && team) showPublicSaleCelebration(p, team);
+  }
+}
+
+function showPublicSaleCelebration(p, team){
+  const flash = document.getElementById('live-sold-flash');
+  const banner = document.getElementById('live-sold-banner');
+  if(!banner) return;
+  if(flash){ flash.classList.remove('show'); void flash.offsetWidth; flash.classList.add('show'); }
+  banner.innerHTML = (p.finalPts!=null)
+    ? `${p.name}<br>SOLD to <b>${team.name}</b> for <b>${p.finalPts.toLocaleString()} pts</b>`
+    : `${p.name}<br>assigned to <b>${team.name}</b>`;
+  banner.classList.add('show');
+  spawnLiveConfetti();
+  clearTimeout(_saleBannerTimer);
+  _saleBannerTimer = setTimeout(()=>{ banner.classList.remove('show'); }, 3000);
+}
+
 async function renderLiveAuctionPublic(){
   if(!_connected) return;
   const ps = await getP();
@@ -3148,6 +3179,7 @@ async function renderLiveAuctionPublic(){
   }
   const a = await getA();
   detectNewlyCompletedPools(a);
+  detectNewSales(ps, tms);
   renderLiveVideoEmbed(a ? a.youtubeVideoId : null, a ? a.youtubeChannelId : null);
   const cardEl = document.getElementById('live-spotlight-card');
   if(!cardEl) return;
