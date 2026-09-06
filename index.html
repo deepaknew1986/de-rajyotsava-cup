@@ -898,6 +898,13 @@ tr:hover td{background:rgba(200,150,0,0.1);}
     </div>
 
     <div id="adm-pane-liveauction" style="display:none;">
+      <div class="auc-tab-bar" style="margin-bottom:1rem;">
+        <button class="auc-tab active" id="live-cat-tab-men" onclick="switchLiveAuctionCategory('men')">Men's</button>
+        <button class="auc-tab" id="live-cat-tab-women" onclick="switchLiveAuctionCategory('women')">Women's</button>
+        <button class="auc-tab" id="live-cat-tab-kids" onclick="switchLiveAuctionCategory('kids')">Kids</button>
+      </div>
+
+      <div id="adm-live-men">
       <div class="info-box" style="margin-bottom:1rem;">
         Search and spotlight a player, then click whichever team's owner raises a paddle. Owners and marquee players are excluded here since they're already assigned to a team.
       </div>
@@ -949,6 +956,27 @@ tr:hover td{background:rgba(200,150,0,0.1);}
           <div id="lo-preview-wrap"></div>
           <button class="btn-primary" id="lo-confirm-btn" style="margin-top:14px;" onclick="confirmLeftoverAssignment()" disabled>Confirm Assignment</button>
         </div>
+      </div>
+      </div>
+
+      <div id="adm-live-women" style="display:none;position:relative;">
+        <div class="info-box" style="margin-bottom:1rem;">
+          Select a player, then pick which team she goes to — no bidding, no points, just a direct pick.
+        </div>
+        <div class="sold-flash" id="adm-live-sold-flash-women"></div>
+        <div class="sold-banner" id="adm-live-sold-banner-women"></div>
+        <div id="adm-social-pool-women" class="pl-list-wrap"></div>
+        <div id="adm-social-select-women" style="margin-top:1.5rem;"></div>
+      </div>
+
+      <div id="adm-live-kids" style="display:none;position:relative;">
+        <div class="info-box" style="margin-bottom:1rem;">
+          Select a player, then pick which team they go to — no bidding, no points, just a direct pick.
+        </div>
+        <div class="sold-flash" id="adm-live-sold-flash-kids"></div>
+        <div class="sold-banner" id="adm-live-sold-banner-kids"></div>
+        <div id="adm-social-pool-kids" class="pl-list-wrap"></div>
+        <div id="adm-social-select-kids" style="margin-top:1.5rem;"></div>
       </div>
     </div>
 
@@ -1297,7 +1325,8 @@ function dbToAuction(r){
     youtubeVideoId: r.youtube_video_id||null,
     youtubeChannelId: r.youtube_channel_id||null,
     registrationOpen: r.registration_open!==false,
-    completedPools: r.completed_pools||[]
+    completedPools: r.completed_pools||[],
+    socialCurId: r.social_cur_id||null
   };
 }
 
@@ -1358,6 +1387,7 @@ async function saveA(a, season){
     youtube_channel_id: a.youtubeChannelId||null,
     registration_open: a.registrationOpen!==false,
     completed_pools: a.completedPools||[],
+    social_cur_id: a.socialCurId||null,
     updated_at: new Date().toISOString()
   });
 }
@@ -2897,7 +2927,9 @@ async function refreshCurrentAdminTab(){
 let TEAMS_VIEW_YEAR = null;
 function pickTeamsYear(year){ TEAMS_VIEW_YEAR = year; renderTeamsPage(); }
 function computeTeamAcquisitions(ps, t){
-  const soldPs = ps.filter(p=>p.soldToTeam && String(p.soldToTeam).trim());
+  // Only adult Male players ever go through the points-based auction — Women/Kids
+  // are assigned separately with no price, so they must never enter this budget math.
+  const soldPs = ps.filter(p=>p.soldToTeam && String(p.soldToTeam).trim() && p.gender==='Male' && !p.isKid);
   const auto=[];
   if(t.marqueeId){
     const mp=ps.find(p=>p.id===t.marqueeId);
@@ -3268,6 +3300,114 @@ async function renderAdminLiveAuction(){
   renderAdminLiveSpotlight();
   renderAdminLiveTeamBudgets();
   renderLeftoverSection();
+  if(_liveAuctionCategory!=='men') renderSocialPool(_liveAuctionCategory);
+}
+
+let _liveAuctionCategory = 'men';
+function switchLiveAuctionCategory(cat){
+  _liveAuctionCategory = cat;
+  ['men','women','kids'].forEach(c=>{
+    document.getElementById('adm-live-'+c).style.display = c===cat?'block':'none';
+    document.getElementById('live-cat-tab-'+c)?.classList.toggle('active', c===cat);
+  });
+  if(cat!=='men') renderSocialPool(cat);
+}
+
+const SOCIAL_LEVEL_DEFS = [
+  {key:'intp', label:'Intermediate', tagClass:'int', match:p=>p.level==='Intermediate'},
+  {key:'beg', label:'Beginner', tagClass:'beg', match:p=>p.level==='Beginner'}
+];
+
+function socialEligible(ps, cat){
+  return ps.filter(p=>!p.soldToTeam && (cat==='women' ? (!p.isKid && p.gender==='Female') : p.isKid));
+}
+
+// Women's/Kids selection + team-assignment, no price, no bidding — a lighter
+// version of the Men's flow used purely so it's clear which team each social
+// category player goes to.
+function renderSocialPool(cat){
+  const {ps, tms, a} = _liveCache;
+  const poolEl = document.getElementById('adm-social-pool-'+cat);
+  const selectEl = document.getElementById('adm-social-select-'+cat);
+  if(!poolEl) return;
+  const eligible = socialEligible(ps, cat);
+  poolEl.innerHTML = SOCIAL_LEVEL_DEFS.map(def=>{
+    const group = eligible.filter(def.match);
+    if(!group.length) return '';
+    const poolKey = cat+'-'+def.key;
+    const isOpen = _liveOpenPools.has(poolKey);
+    return `<div class="live-pool-group" data-pool="${poolKey}">
+      <div class="live-pool-header" onclick="toggleLivePool('${poolKey}')">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="tag ${def.tagClass}">${def.label}</span>
+          <span style="font-size:10px;color:var(--muted2);">${group.length} player${group.length!==1?'s':''}</span>
+        </div>
+        <span class="live-pool-chev" style="transform:rotate(${isOpen?180:0}deg);">&#9660;</span>
+      </div>
+      <div class="live-pool-body" style="display:${isOpen?'flex':'none'};">
+        ${group.map(p=>`<div class="pl-item" onclick="selectSocialPlayer('${cat}','${p.id}')" data-name="${p.name.toLowerCase()}">
+          <span class="pl-name">${p.name}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  const curId = a && a.socialCurId;
+  const curPlayer = curId ? ps.find(p=>p.id===curId) : null;
+  const belongsHere = curPlayer && (cat==='kids' ? curPlayer.isKid : (!curPlayer.isKid && curPlayer.gender==='Female'));
+  if(!belongsHere){ selectEl.innerHTML = ''; return; }
+  selectEl.innerHTML = `
+    <div style="border:1px solid rgba(255,216,77,0.2);background:rgba(255,216,77,0.05);border-radius:8px;padding:16px;text-align:center;">
+      <div style="font-family:'Cinzel',serif;font-size:16px;color:var(--gold);margin-bottom:12px;">${curPlayer.name} &mdash; ${curPlayer.level}</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        ${tms.map(t=>`<button class="btn-sm" onclick="assignSocialPlayerToTeam('${t.id}')">${t.name}</button>`).join('')}
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--red);text-decoration:underline;cursor:pointer;" onclick="cancelSocialSelection()">Cancel selection</div>
+    </div>`;
+}
+
+async function selectSocialPlayer(cat, id){
+  if(!requireConn()) return;
+  const a = _liveCache.a;
+  a.socialCurId = id;
+  try{ await saveA(a); } catch(e){ toast('Error: '+e.message,'error'); }
+  renderSocialPool(cat);
+}
+
+async function cancelSocialSelection(){
+  if(!requireConn()) return;
+  const a = _liveCache.a;
+  a.socialCurId = null;
+  try{ await saveA(a); } catch(e){ toast('Error: '+e.message,'error'); }
+  renderSocialPool(_liveAuctionCategory);
+}
+
+async function assignSocialPlayerToTeam(teamId){
+  if(!requireConn()) return;
+  const a = _liveCache.a;
+  const id = a && a.socialCurId;
+  if(!id) return;
+  const cat = _liveAuctionCategory;
+  const p = _liveCache.ps.find(x=>x.id===id);
+  const team = _liveCache.tms.find(t=>t.id===teamId);
+  if(!p || !team) return;
+  try{
+    await savePlayerField(id, {sold_to_team: teamId});
+    a.socialCurId = null;
+    await saveA(a);
+    const flash = document.getElementById('adm-live-sold-flash-'+cat);
+    const banner = document.getElementById('adm-live-sold-banner-'+cat);
+    if(flash){ flash.classList.remove('show'); void flash.offsetWidth; flash.classList.add('show'); }
+    if(banner){
+      banner.innerHTML = `${p.name}<br>assigned to <b>${team.name}</b>`;
+      banner.classList.add('show');
+    }
+    spawnLiveConfetti();
+    setTimeout(async ()=>{
+      if(banner) banner.classList.remove('show');
+      await renderAdminLiveAuction();
+    }, 1800);
+  } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
 async function saveLiveStream(){
@@ -3298,7 +3438,9 @@ let _liveOpenPools = new Set(['fadv']);
 function toggleLivePool(key){
   if(_liveOpenPools.has(key)) _liveOpenPools.delete(key);
   else _liveOpenPools.add(key);
-  renderAdminLivePlayerList();
+  if(key.startsWith('women-')) renderSocialPool('women');
+  else if(key.startsWith('kids-')) renderSocialPool('kids');
+  else renderAdminLivePlayerList();
 }
 
 function renderAdminLivePlayerList(){
