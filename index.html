@@ -651,13 +651,26 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <div class="sec-title">Live Auction</div>
         <div class="sec-line"></div>
       </div>
+      <div class="auc-tab-bar" style="margin-bottom:1rem;">
+        <button class="auc-tab active" id="live-pub-tab-men" onclick="switchPublicLiveCategory('men')">Men's</button>
+        <button class="auc-tab" id="live-pub-tab-women" onclick="switchPublicLiveCategory('women')">Women's</button>
+        <button class="auc-tab" id="live-pub-tab-kids" onclick="switchPublicLiveCategory('kids')">Kids</button>
+      </div>
       <div id="live-video-wrap"></div>
-      <div id="live-team-budgets" style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;"></div>
       <div id="live-pool-complete-banner" class="pool-complete-banner"></div>
       <div id="live-spotlight-wrap" style="position:relative;">
         <div class="sold-flash" id="live-sold-flash"></div>
         <div class="sold-banner" id="live-sold-banner"></div>
-        <div id="live-spotlight-card"></div>
+        <div id="live-pub-men">
+          <div id="live-team-budgets" style="display:flex;gap:10px;margin-bottom:1.25rem;flex-wrap:wrap;"></div>
+          <div id="live-spotlight-card"></div>
+        </div>
+        <div id="live-pub-women" style="display:none;">
+          <div id="live-social-spotlight-women"></div>
+        </div>
+        <div id="live-pub-kids" style="display:none;">
+          <div id="live-social-spotlight-kids"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -3212,6 +3225,8 @@ async function renderLiveAuctionPublic(){
   const a = await getA();
   detectNewlyCompletedPools(a);
   detectNewSales(ps, tms);
+  renderSocialSpotlightPublic('women', ps, a);
+  renderSocialSpotlightPublic('kids', ps, a);
   renderLiveVideoEmbed(a ? a.youtubeVideoId : null, a ? a.youtubeChannelId : null);
   const cardEl = document.getElementById('live-spotlight-card');
   if(!cardEl) return;
@@ -3241,6 +3256,41 @@ async function renderLiveAuctionPublic(){
           return `<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:3px 0;"><span><b style="color:var(--text);">${tn}</b> ${h.note}</span><span style="color:var(--gold);font-weight:700;">${h.amt} pts</span></div>`;
         }).join('')}
       </div>
+    </div>`;
+}
+
+function switchPublicLiveCategory(cat){
+  ['men','women','kids'].forEach(c=>{
+    document.getElementById('live-pub-'+c).style.display = c===cat?'block':'none';
+    document.getElementById('live-pub-tab-'+c)?.classList.toggle('active', c===cat);
+  });
+  renderLiveAuctionPublic();
+}
+
+// Women's/Kids public spotlight — same visual card as Men's, minus every
+// price/bid element, since these are picked directly with no bidding.
+function renderSocialSpotlightPublic(cat, ps, a){
+  const el = document.getElementById('live-social-spotlight-'+cat);
+  if(!el) return;
+  const curId = a && a.socialCurId;
+  const curPlayer = curId ? ps.find(p=>p.id===curId) : null;
+  // The same socialCurId is shared between Women's and Kids — only show it
+  // under the tab that actually matches this player, so a Women's pick never
+  // bleeds onto the Kids tab or vice versa.
+  const matchesThisTab = curPlayer && (cat==='kids' ? curPlayer.isKid : (!curPlayer.isKid && curPlayer.gender==='Female'));
+  if(!matchesThisTab){
+    el.innerHTML = '<div class="empty" style="padding:3rem 1rem;">Waiting for the admin to bring up the next player…</div>';
+    return;
+  }
+  const initials = curPlayer.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  el.innerHTML = `
+    <div style="text-align:center;padding:1.5rem 1rem;">
+      <div style="width:500px;height:500px;max-width:90vw;max-height:90vw;border-radius:50%;background:rgba(255,216,77,0.1);border:3px solid rgba(255,216,77,0.35);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:140px;color:var(--gold);margin:0 auto 14px;overflow:hidden;box-shadow:0 0 30px rgba(255,216,77,0.15);">
+        ${curPlayer.photoUrl?`<img src="${curPlayer.photoUrl}" style="width:100%;height:100%;object-fit:cover;image-rendering:high-quality;"/>`:initials}
+      </div>
+      <div style="font-family:'Cinzel',serif;font-weight:700;font-size:26px;color:var(--gold);margin-bottom:4px;">${curPlayer.name}</div>
+      <div style="margin-bottom:16px;"><span class="tag ${curPlayer.level==='Intermediate'?'int':'beg'}">${curPlayer.level}</span></div>
+      <div style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Under consideration</div>
     </div>`;
 }
 
