@@ -430,6 +430,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
   #page-landing>div:first-of-type{padding:12px 16px 10px!important;}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
 <body>
 
@@ -795,6 +796,14 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <button class="btn-sm success" onclick="exportCSV()">Export CSV</button>
         <button class="btn-sm danger" onclick="confirmClearAll()">Clear All</button>
         <button class="btn-sm" onclick="openAddMarqueeModal()">&#9830; Add Player</button>
+        <button class="btn-sm" onclick="exportAllPhotosZip()">&#128247; Download All Photos (Backup)</button>
+      </div>
+      <div id="photo-export-progress" style="display:none;margin-bottom:1.25rem;background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:8px;padding:14px 16px;">
+        <div style="font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Building photo backup…</div>
+        <div id="photo-export-status" style="font-size:13px;color:var(--gold);"></div>
+        <div style="background:rgba(255,216,77,0.1);border-radius:4px;height:6px;margin-top:8px;overflow:hidden;">
+          <div id="photo-export-bar" style="background:var(--gold);height:100%;width:0%;transition:width .2s;"></div>
+        </div>
       </div>
       <div class="table-wrap table-wrap-players">
         <table>
@@ -2378,6 +2387,77 @@ async function clearAll(){
     await renderTeams(); await renderBpRules();
     toast('All data cleared.');
   } catch(e){ toast('Error: '+e.message,'error'); }
+}
+
+// Downloads every existing player photo and gallery photo, across every season,
+// bundled into one ZIP file — a plain local backup, nothing is changed or
+// deleted on Supabase. This is step 1 before any future compress/replace work.
+async function exportAllPhotosZip(){
+  if(!requireConn()) return;
+  if(!confirm('This downloads every player and gallery photo across all seasons into one ZIP file. It may take a few minutes and use some bandwidth. Continue?')) return;
+
+  const progressWrap = document.getElementById('photo-export-progress');
+  const statusEl = document.getElementById('photo-export-status');
+  const barEl = document.getElementById('photo-export-bar');
+  progressWrap.style.display = 'block';
+  statusEl.textContent = 'Finding photos…';
+  barEl.style.width = '0%';
+
+  try{
+    const seasons = await getSeasons();
+    const seasonYears = seasons.length ? seasons.map(s=>s.year) : [ACTIVE_SEASON];
+
+    const items = []; // {url, zipPath}
+    for(const year of seasonYears){
+      const players = await getP(year);
+      players.filter(p=>p.photoUrl).forEach(p=>{
+        const ext = (p.photoUrl.split('.').pop() || 'jpg').split('?')[0];
+        const safeName = p.name.replace(/[^a-z0-9]+/gi,'_');
+        items.push({url:p.photoUrl, zipPath:`players/${year}/${safeName}_${p.id}.${ext}`});
+      });
+      const gallery = await getGallery(year);
+      gallery.forEach(g=>{
+        const ext = (g.url.split('.').pop() || 'jpg').split('?')[0];
+        items.push({url:g.url, zipPath:`gallery/${year}/${g.id}.${ext}`});
+      });
+    }
+
+    if(!items.length){
+      statusEl.textContent = 'No photos found to back up.';
+      setTimeout(()=>{ progressWrap.style.display='none'; }, 2000);
+      return;
+    }
+
+    const zip = new JSZip();
+    let done = 0, failed = 0;
+    for(const item of items){
+      statusEl.textContent = `Downloading photo ${done+1} of ${items.length}…`;
+      barEl.style.width = Math.round((done/items.length)*100)+'%';
+      try{
+        const res = await fetch(item.url);
+        if(!res.ok) throw new Error('fetch failed');
+        const blob = await res.blob();
+        zip.file(item.zipPath, blob);
+      } catch(e){ failed++; }
+      done++;
+    }
+
+    statusEl.textContent = 'Building ZIP file…';
+    barEl.style.width = '100%';
+    const zipBlob = await zip.generateAsync({type:'blob'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(zipBlob);
+    a.download = `DE_Rajyotsava_Cup_Photo_Backup_${new Date().toISOString().slice(0,10)}.zip`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    statusEl.textContent = `Done — ${done-failed} of ${items.length} photos backed up${failed?`, ${failed} failed`:''}.`;
+    toast('Photo backup ZIP downloaded ✓','success');
+    setTimeout(()=>{ progressWrap.style.display='none'; }, 4000);
+  } catch(e){
+    statusEl.textContent = 'Error building backup: '+e.message;
+    toast('Error: '+e.message,'error');
+  }
 }
 
 async function exportCSV(){
