@@ -2221,9 +2221,9 @@ async function saveFinalPtsFrom(id, elId){
   try{
     await savePlayerField(id,{final_pts:n});
     toast('Final points saved ✓','success');
+    // No table re-render here on purpose: it would wipe prices typed in other rows
+    // that haven't been saved yet. (The old renderAuctionedPlayers call was removed: no such function exists.)
     await renderAdminTable();
-    await renderAuctionedPlayers();
-    await renderAuctionResultsTable();
   } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
@@ -2232,7 +2232,7 @@ async function saveSoldTeam(id,teamId){
   try{
     await savePlayerField(id,{sold_to_team:teamId||null});
     toast('Team assigned ✓','success');
-    await renderAuctionedPlayers();
+    // The dropdown already shows the new team, so nothing needs refreshing.
   } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
