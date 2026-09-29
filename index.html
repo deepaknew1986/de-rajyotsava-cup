@@ -796,14 +796,16 @@ tr:hover td{background:rgba(200,150,0,0.1);}
         <button class="btn-sm success" onclick="exportCSV()">Export CSV</button>
         <button class="btn-sm danger" onclick="confirmClearAll()">Clear All</button>
         <button class="btn-sm" onclick="openAddMarqueeModal()">&#9830; Add Player</button>
-        <button class="btn-sm" onclick="exportAllPhotosZip()">&#128247; Download All Photos (Backup)</button>
+        <button class="btn-sm" onclick="compressAllPhotos()">&#128247; Compress &amp; Back Up Photos</button>
       </div>
       <div id="photo-export-progress" style="display:none;margin-bottom:1.25rem;background:rgba(255,216,77,0.05);border:1px solid rgba(255,216,77,0.15);border-radius:8px;padding:14px 16px;">
-        <div style="font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Building photo backup…</div>
+        <div id="photo-export-title" style="font-size:11px;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Compressing photos…</div>
         <div id="photo-export-status" style="font-size:13px;color:var(--gold);"></div>
         <div style="background:rgba(255,216,77,0.1);border-radius:4px;height:6px;margin-top:8px;overflow:hidden;">
           <div id="photo-export-bar" style="background:var(--gold);height:100%;width:0%;transition:width .2s;"></div>
         </div>
+        <div id="photo-export-report" style="display:none;margin-top:12px;"></div>
+        <div id="photo-export-actions" style="display:none;margin-top:12px;gap:8px;flex-wrap:wrap;"></div>
       </div>
       <div class="table-wrap table-wrap-players">
         <table>
@@ -1644,7 +1646,10 @@ function compressImage(file, maxDim=800, quality=0.8){
         }
         const canvas = document.createElement('canvas');
         canvas.width = width; canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        const ctx2d = canvas.getContext('2d');
+        ctx2d.fillStyle = '#ffffff'; // JPEG has no transparency — without this, transparent PNG areas turn black
+        ctx2d.fillRect(0, 0, width, height);
+        ctx2d.drawImage(img, 0, 0, width, height);
         canvas.toBlob(blob => {
           if(!blob){ resolve(file); return; }
           resolve(new File([blob], file.name.replace(/\.[^.]+$/, '')+'.jpg', {type:'image/jpeg'}));
@@ -2389,74 +2394,237 @@ async function clearAll(){
   } catch(e){ toast('Error: '+e.message,'error'); }
 }
 
-// Downloads every existing player photo and gallery photo, across every season,
-// bundled into one ZIP file — a plain local backup, nothing is changed or
-// deleted on Supabase. This is step 1 before any future compress/replace work.
-async function exportAllPhotosZip(){
+/* ══════════════════════════════════════════════
+   COMPRESS & BACK UP EXISTING PLAYER PHOTOS (one click)
+   For each player photo over 500 KB: download the original -> keep it in a ZIP
+   -> compress it -> upload the compressed copy under a NEW filename -> point
+   that player at it. Old files are only deleted at the very end, after the ZIP
+   has been saved to the computer and the admin confirms.
+══════════════════════════════════════════════ */
+const PHOTO_URL_MARK = '/storage/v1/object/public/player-photos/';
+const PHOTO_MIN_BYTES = 500*1024;
+let _photoToolRunning = false;
+let _photoPendingDeletes = []; // old file paths waiting for the delete step
+
+function photoEsc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function photoFmt(b){ return b>=1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1,Math.round(b/1024))+' KB'; }
+function photoObjectPath(url){
+  const i = url ? url.indexOf(PHOTO_URL_MARK) : -1;
+  if(i<0) return null;
+  return decodeURIComponent(url.slice(i+PHOTO_URL_MARK.length).split('?')[0]);
+}
+function photoUi(){
+  return {
+    wrap: document.getElementById('photo-export-progress'),
+    title: document.getElementById('photo-export-title'),
+    status: document.getElementById('photo-export-status'),
+    bar: document.getElementById('photo-export-bar'),
+    report: document.getElementById('photo-export-report'),
+    actions: document.getElementById('photo-export-actions')
+  };
+}
+async function adminUploadPlayerPhoto(path, file){
+  const encoded = path.split('/').map(encodeURIComponent).join('/');
+  const res = await fetch(`${SB_URL}/storage/v1/object/player-photos/${encoded}`, {
+    method:'POST',
+    headers:{'apikey':SB_SERVICE,'Authorization':'Bearer '+SB_SERVICE,'Content-Type':'image/jpeg','x-upsert':'true','cache-control':'max-age=31536000'},
+    body:file
+  });
+  if(!res.ok) throw new Error('upload failed ('+res.status+')');
+}
+// Returns the set of file paths Supabase confirms it removed.
+async function adminDeletePlayerPhotos(paths){
+  const res = await fetch(`${SB_URL}/storage/v1/object/player-photos`, {
+    method:'DELETE',
+    headers:{'apikey':SB_SERVICE,'Authorization':'Bearer '+SB_SERVICE,'Content-Type':'application/json'},
+    body:JSON.stringify({prefixes:paths})
+  });
+  if(!res.ok) throw new Error('delete failed ('+res.status+')');
+  const removed = await res.json();
+  return new Set((Array.isArray(removed)?removed:[]).map(o=>o.name));
+}
+function photoRenderActions(){
+  const ui = photoUi();
+  ui.actions.innerHTML = '';
+  if(_photoPendingDeletes.length){
+    const b = document.createElement('button');
+    b.className = 'btn-sm danger';
+    b.textContent = `Delete ${_photoPendingDeletes.length} old photos from Supabase`;
+    b.onclick = ()=>{
+      if(confirm(`Delete ${_photoPendingDeletes.length} old large photos from Supabase?\n\nOnly continue if the ZIP of originals is saved on your computer and opens.`)) deletePendingOldPhotos();
+    };
+    ui.actions.appendChild(b);
+  } else {
+    const c = document.createElement('button');
+    c.className = 'btn-sm';
+    c.textContent = 'Close';
+    c.onclick = ()=>{ ui.wrap.style.display='none'; };
+    ui.actions.appendChild(c);
+  }
+  ui.actions.style.display = 'flex';
+}
+async function deletePendingOldPhotos(){
+  const ui = photoUi();
+  const paths = [..._photoPendingDeletes];
+  if(!paths.length) return;
+  ui.actions.style.display = 'none';
+  ui.title.textContent = 'Deleting old photos…';
+  ui.status.textContent = `Deleting ${paths.length} old photos…`;
+  const removed = new Set();
+  for(let i=0;i<paths.length;i+=20){
+    try{ (await adminDeletePlayerPhotos(paths.slice(i,i+20))).forEach(n=>removed.add(n)); }
+    catch(e){ /* counted below as not confirmed */ }
+  }
+  _photoPendingDeletes = paths.filter(p=>!removed.has(p));
+  ui.title.textContent = 'Photo compression finished';
+  if(_photoPendingDeletes.length){
+    ui.status.textContent = `Deleted ${removed.size} of ${paths.length} old photos. ${_photoPendingDeletes.length} were not confirmed deleted.`;
+    ui.report.style.display = 'block';
+    ui.report.innerHTML += `<div style="margin-top:10px;font-size:12px;color:var(--red);">Not confirmed deleted — remove these in Supabase → Storage → player-photos:<br>${_photoPendingDeletes.map(photoEsc).join('<br>')}</div>`;
+    toast('Some old photos were not deleted','error');
+  } else {
+    ui.status.textContent = `Deleted all ${paths.length} old photos from Supabase.`;
+    toast('Old photos deleted ✓','success');
+  }
+  photoRenderActions();
+}
+
+async function compressAllPhotos(){
+  if(_photoToolRunning) return;
   if(!requireConn()) return;
-  if(!confirm('This downloads every player and gallery photo across all seasons into one ZIP file. It may take a few minutes and use some bandwidth. Continue?')) return;
+  if(typeof JSZip==='undefined'){ toast('The ZIP library did not load — refresh the page and try again','error'); return; }
+  if(_photoPendingDeletes.length){
+    toast('Finish the last run first: use the Delete old photos button, or reload the page to leave them','error');
+    return;
+  }
+  if(!confirm('COMPRESS & BACK UP PHOTOS\n\nFor every player photo over 500 KB this will:\n1. download the original and save it into a ZIP on your computer\n2. upload a smaller compressed copy and point the player at it\n\nOld files are NOT deleted until the end, and only if you agree.\nKeep this tab open until it finishes (a few minutes). Continue?')) return;
 
-  const progressWrap = document.getElementById('photo-export-progress');
-  const statusEl = document.getElementById('photo-export-status');
-  const barEl = document.getElementById('photo-export-bar');
-  progressWrap.style.display = 'block';
-  statusEl.textContent = 'Finding photos…';
-  barEl.style.width = '0%';
+  _photoToolRunning = true;
+  const guard = e=>{ e.preventDefault(); e.returnValue=''; };
+  window.addEventListener('beforeunload', guard);
+  const ui = photoUi();
+  ui.wrap.style.display = 'block';
+  ui.title.textContent = 'Compressing photos…';
+  ui.status.textContent = 'Finding photos…';
+  ui.bar.style.width = '0%';
+  ui.report.style.display = 'none'; ui.report.innerHTML = '';
+  ui.actions.style.display = 'none'; ui.actions.innerHTML = '';
 
+  const rows = [];
+  const zip = new JSZip();
   try{
     const seasons = await getSeasons();
-    const seasonYears = seasons.length ? seasons.map(s=>s.year) : [ACTIVE_SEASON];
-
-    const items = []; // {url, zipPath}
-    for(const year of seasonYears){
-      const players = await getP(year);
-      players.filter(p=>p.photoUrl).forEach(p=>{
-        const ext = (p.photoUrl.split('.').pop() || 'jpg').split('?')[0];
-        const safeName = p.name.replace(/[^a-z0-9]+/gi,'_');
-        items.push({url:p.photoUrl, zipPath:`players/${year}/${safeName}_${p.id}.${ext}`});
-      });
-      const gallery = await getGallery(year);
-      gallery.forEach(g=>{
-        const ext = (g.url.split('.').pop() || 'jpg').split('?')[0];
-        items.push({url:g.url, zipPath:`gallery/${year}/${g.id}.${ext}`});
-      });
+    const years = seasons.length ? seasons.map(s=>s.year) : [ACTIVE_SEASON];
+    const candidates = [];
+    for(const year of years){
+      const ps = await getP(year);
+      ps.filter(p=>p.photoUrl).forEach(p=>candidates.push({p, year}));
     }
+    const urlCount = {};
+    candidates.forEach(c=>{ urlCount[c.p.photoUrl] = (urlCount[c.p.photoUrl]||0)+1; });
 
-    if(!items.length){
-      statusEl.textContent = 'No photos found to back up.';
-      setTimeout(()=>{ progressWrap.style.display='none'; }, 2000);
-      return;
-    }
+    for(let i=0;i<candidates.length;i++){
+      const {p, year} = candidates[i];
+      const row = {name:p.name, year, oldPath:'', newPath:'', oldBytes:0, newBytes:0, status:'', note:''};
+      rows.push(row);
+      ui.status.textContent = `Photo ${i+1} of ${candidates.length} — ${p.name}`;
+      ui.bar.style.width = Math.round(i/candidates.length*100)+'%';
+      const oldPath = photoObjectPath(p.photoUrl);
+      row.oldPath = oldPath || '';
+      if(!oldPath){ row.status='skipped'; row.note='photo is not in the player-photos bucket'; continue; }
+      if(/_c\.jpg$/i.test(oldPath)){ row.status='skipped'; row.note='already compressed'; continue; }
+      if(urlCount[p.photoUrl]>1){ row.status='skipped'; row.note='photo file is shared by more than one player'; continue; }
 
-    const zip = new JSZip();
-    let done = 0, failed = 0;
-    for(const item of items){
-      statusEl.textContent = `Downloading photo ${done+1} of ${items.length}…`;
-      barEl.style.width = Math.round((done/items.length)*100)+'%';
+      let newPath = null, uploaded = false;
       try{
-        const res = await fetch(item.url);
-        if(!res.ok) throw new Error('fetch failed');
+        const res = await fetch(p.photoUrl);
+        if(!res.ok) throw new Error('download failed ('+res.status+')');
         const blob = await res.blob();
-        zip.file(item.zipPath, blob);
-      } catch(e){ failed++; }
-      done++;
+        row.oldBytes = blob.size;
+        if(blob.size <= PHOTO_MIN_BYTES){ row.status='skipped'; row.note='already small'; continue; }
+
+        const ext = (oldPath.split('.').pop()||'jpg').toLowerCase();
+        const zipName = `${p.name.replace(/[^a-z0-9]+/gi,'_')}_${p.id}.${ext}`;
+        const original = new File([blob], zipName, {type: blob.type || 'image/jpeg'});
+        const compressed = await compressImage(original, 800, 0.8);
+        if(compressed===original || compressed.type!=='image/jpeg' || compressed.size>=blob.size)
+          throw new Error('compression did not make the photo smaller');
+
+        newPath = oldPath.replace(/\.[^./]+$/, '') + '_c.jpg';
+        await adminUploadPlayerPhoto(newPath, compressed);
+        uploaded = true;
+        let upd;
+        try{ upd = await sbUpdate('players', {photo_url: `${SB_URL}${PHOTO_URL_MARK}${newPath}`}, `id=eq.${p.id}`); }
+        catch(e){ throw new Error('database update failed: '+e.message); }
+        if(!Array.isArray(upd) || upd.length<1) throw new Error('the database did not update this player');
+
+        zip.file(`originals/${year}/${zipName}`, blob);
+        row.newPath = newPath; row.newBytes = compressed.size; row.status = 'done';
+      } catch(e){
+        // If the new copy was uploaded but the player couldn't be pointed at it, remove it again.
+        if(uploaded && newPath){ try{ await adminDeletePlayerPhotos([newPath]); }catch(_){} }
+        row.status = 'failed'; row.note = e.message || 'unknown error';
+      }
+    }
+    ui.bar.style.width = '100%';
+
+    const done = rows.filter(r=>r.status==='done');
+    const failed = rows.filter(r=>r.status==='failed');
+    const skipped = rows.filter(r=>r.status==='skipped');
+    const csvCell = v => '"'+String(v).replace(/"/g,'""')+'"';
+    const csv = ['player,season,old_path,new_path,old_bytes,new_bytes,status,note']
+      .concat(rows.map(r=>[r.name,r.year,r.oldPath,r.newPath,r.oldBytes,r.newBytes,r.status,r.note].map(csvCell).join(','))).join('\n');
+    zip.file('compression_report.csv', csv);
+
+    let zipSaved = false;
+    if(done.length){
+      ui.status.textContent = 'Saving the ZIP of original photos…';
+      const zipBlob = await zip.generateAsync({type:'blob', compression:'STORE'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(zipBlob);
+      a.download = `DE_Rajyotsava_Cup_Original_Photos_${new Date().toISOString().slice(0,10)}.zip`;
+      a.click();
+      setTimeout(()=>URL.revokeObjectURL(a.href), 60000);
+      zipSaved = true;
     }
 
-    statusEl.textContent = 'Building ZIP file…';
-    barEl.style.width = '100%';
-    const zipBlob = await zip.generateAsync({type:'blob'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(zipBlob);
-    a.download = `DE_Rajyotsava_Cup_Photo_Backup_${new Date().toISOString().slice(0,10)}.zip`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    const oldTotal = done.reduce((s,r)=>s+r.oldBytes,0);
+    const newTotal = done.reduce((s,r)=>s+r.newBytes,0);
+    ui.title.textContent = 'Photo compression finished';
+    ui.status.textContent = done.length
+      ? `Compressed ${done.length} photos: ${photoFmt(oldTotal)} → ${photoFmt(newTotal)}. Skipped ${skipped.length}, failed ${failed.length}.`
+      : `No photos needed compressing. Skipped ${skipped.length}, failed ${failed.length}.`;
+    let html = '';
+    if(failed.length){
+      html += `<div style="font-size:12px;color:var(--red);margin-bottom:8px;">Failed (these keep their original photo):<br>${failed.map(r=>photoEsc(r.name)+' — '+photoEsc(r.note)).join('<br>')}</div>`;
+    }
+    const oddSkips = skipped.filter(r=>r.note!=='already small');
+    if(oddSkips.length){
+      html += `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Skipped:<br>${oddSkips.map(r=>photoEsc(r.name)+' — '+photoEsc(r.note)).join('<br>')}</div>`;
+    }
+    if(done.length){
+      html += `<div style="max-height:200px;overflow:auto;font-size:12px;color:var(--muted);border-top:1px solid rgba(255,216,77,0.12);padding-top:8px;">${done.map(r=>`${photoEsc(r.name)}: ${photoFmt(r.oldBytes)} → ${photoFmt(r.newBytes)}`).join('<br>')}</div>`;
+    }
+    ui.report.innerHTML = html;
+    ui.report.style.display = html ? 'block' : 'none';
 
-    statusEl.textContent = `Done — ${done-failed} of ${items.length} photos backed up${failed?`, ${failed} failed`:''}.`;
-    toast('Photo backup ZIP downloaded ✓','success');
-    setTimeout(()=>{ progressWrap.style.display='none'; }, 4000);
+    if(zipSaved){
+      _photoPendingDeletes = done.map(r=>r.oldPath);
+      photoRenderActions();
+      if(confirm(`The ZIP with the ${done.length} original photos was saved to your computer.\n\nOnly click OK if you can see that ZIP in your Downloads folder and it opens.\n\nDelete the ${done.length} old large photos from Supabase now?\n(Cancel keeps them — you can delete later with the button below the progress bar.)`)){
+        await deletePendingOldPhotos();
+      }
+    } else {
+      photoRenderActions();
+    }
   } catch(e){
-    statusEl.textContent = 'Error building backup: '+e.message;
+    ui.title.textContent = 'Photo compression stopped';
+    ui.status.textContent = 'Error: '+e.message+' — no old photos were deleted.';
     toast('Error: '+e.message,'error');
+    photoRenderActions();
+  } finally {
+    window.removeEventListener('beforeunload', guard);
+    _photoToolRunning = false;
   }
 }
 
