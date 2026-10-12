@@ -787,6 +787,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <button class="auc-tab"        id="adm-tab-auction"    onclick="switchAdminTab('auction')">Auction Results</button>
       <button class="auc-tab"        id="adm-tab-gallery"    onclick="switchAdminTab('gallery')">Gallery</button>
       <button class="auc-tab"        id="adm-tab-liveauction" onclick="switchAdminTab('liveauction')">Live Auction</button>
+      <button class="auc-tab"        id="adm-tab-schedule" onclick="switchAdminTab('schedule')">Schedule</button>
     </div>
     <div class="admin-tab-dropdown-toggle" onclick="toggleAdminTabDrawer(event)">
       <span id="admin-tab-current-label">Players</span>
@@ -799,6 +800,7 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       <button class="auc-tab"        id="adm-tab-mob-auction"    onclick="switchAdminTab('auction');closeAdminTabDrawer();">Auction Results</button>
       <button class="auc-tab"        id="adm-tab-mob-gallery"    onclick="switchAdminTab('gallery');closeAdminTabDrawer();">Gallery</button>
       <button class="auc-tab"        id="adm-tab-mob-liveauction" onclick="switchAdminTab('liveauction');closeAdminTabDrawer();">Live Auction</button>
+      <button class="auc-tab"        id="adm-tab-mob-schedule" onclick="switchAdminTab('schedule');closeAdminTabDrawer();">Schedule</button>
     </div>
 
     <!-- ── SUB-TAB: PLAYERS ── -->
@@ -942,6 +944,8 @@ tr:hover td{background:rgba(200,150,0,0.1);}
       </div>
       <div id="gal-admin-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;"></div>
     </div>
+
+    <div id="adm-pane-schedule" style="display:none;"></div>
 
     <div id="adm-pane-liveauction" style="display:none;">
       <div class="auc-tab-bar" style="margin-bottom:1rem;">
@@ -1516,12 +1520,10 @@ function openAdminOverlay(){
 function closeAdminOverlay(){document.getElementById('admin-overlay').classList.remove('show');}
 function adminLogin(){
   if(document.getElementById('admin-pw').value===ADMIN_PW){
-    SCHED_ADMIN=true;
     closeAdminOverlay();showAdminPage();toast('Welcome, Admin!','success');
   } else {toast('Wrong password','error');}
 }
 function adminLogout(){
-  SCHED_ADMIN=false;
   document.getElementById('admin-pw').value='';
   gotoPage('reg');toast('Logged out.');
 }
@@ -1583,14 +1585,14 @@ async function renderSchedule(){
   if(!ok){ document.getElementById('sched-pane-'+SCHED_SUBTAB).innerHTML='<div class="empty" style="padding:2rem 1rem;">Fixtures table not set up yet — admin needs to run the fixtures SQL.</div>'; return; }
   renderSchedulePane();
 }
-let SCHED_ADMIN=false;
+let SCHED_LOADED_YEAR=null, ADM_SCHED_FILTER='pending';
 let SCHED_RESULTS={};   // match_no -> saved row
 const MENS_FIXTURES=[[1,"Advanced + Foreign Advanced","Rashtrakuta","Hoysala",3],[2,"B1 & B2","Chalukya","Rashtrakuta",2],[3,"Advanced + Intermediate +","Hoysala","Chalukya",3],[4,"Foreign Intermediate+","Rashtrakuta","Hoysala",3],[5,"Foreign Intermediate+ 1 & Intermediate+ 2","Chalukya","Rashtrakuta",3],[6,"I1 & I3","Chalukya","Rashtrakuta",2],[7,"Advanced + Foreign Advanced","Hoysala","Chalukya",3],[8,"Advanced + Intermediate +","Rashtrakuta","Hoysala",3],[9,"Foreign Intermediate+ 1 & Intermediate+ 2","Rashtrakuta","Hoysala",3],[10,"Foreign Intermediate+ 2 & Intermediate+ 1","Rashtrakuta","Hoysala",3],[11,"Foreign Advanced & Intermediate +","Chalukya","Rashtrakuta",3],[12,"I4 & I5","Hoysala","Chalukya",2],[13,"I3 & I4","Rashtrakuta","Hoysala",2],[14,"I 1 & I2","Hoysala","Chalukya",2],[15,"B2 & B3","Rashtrakuta","Hoysala",2],[16,"I4 & I5","Chalukya","Rashtrakuta",2],[17,"B1 & B3","Chalukya","Rashtrakuta",2],[18,"B1 & B2","Rashtrakuta","Hoysala",2],[19,"I2 & I5","Rashtrakuta","Hoysala",2],[20,"Foreign Intermediate+ 2 & Intermediate+ 1","Chalukya","Hoysala",3],[21,"I4 & I5","Rashtrakuta","Hoysala",2],[22,"Foreign Intermediate+","Hoysala","Chalukya",3],[23,"Advanced + Intermediate +","Chalukya","Rashtrakuta",3],[24,"Foreign Advanced & Intermediate +","Rashtrakuta","Hoysala",3],[25,"I 1 & I2","Rashtrakuta","Hoysala",2],[26,"I3 & I4","Chalukya","Rashtrakuta",2],[27,"I2 & I5","Chalukya","Rashtrakuta",2],[28,"I1 & I3","Rashtrakuta","Hoysala",2],[29,"B2 & B3","Chalukya","Rashtrakuta",2],[30,"B1 & B3","Rashtrakuta","Hoysala",2],[31,"B1 & B2","Hoysala","Chalukya",2],[32,"I2 & I5","Hoysala","Chalukya",2],[33,"Foreign Intermediate+ 2 & Intermediate+ 1","Chalukya","Rashtrakuta",3],[34,"I3 & I4","Hoysala","Chalukya",2],[35,"Foreign Advanced & Intermediate +","Hoysala","Chalukya",3],[36,"B1 & B3","Hoysala","Chalukya",2],[37,"Foreign Intermediate+","Chalukya","Rashtrakuta",3],[38,"Foreign Intermediate+ 1 & Intermediate+ 2","Hoysala","Chalukya",3],[39,"Advanced + Foreign Advanced","Chalukya","Rashtrakuta",3],[40,"B2 & B3","Hoysala","Chalukya",2],[41,"I1 & I3","Hoysala","Chalukya",2],[42,"I 1 & I2","Chalukya","Rashtrakuta",2]]; // [match_no, category, team1, team2, points]
 const MENS_TEAMS=['Chalukya','Hoysala','Rashtrakuta'];
 function schEsc(t){return String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-async function loadSchedResults(){
-  SCHED_RESULTS={};
-  const rows = await sbGet('fixtures',`select=*&season=eq.${SCHED_VIEW_YEAR}&order=match_no.asc`).catch(()=>null);
+async function loadSchedResults(year){
+  SCHED_RESULTS={}; SCHED_LOADED_YEAR=year||SCHED_VIEW_YEAR;
+  const rows = await sbGet('fixtures',`select=*&season=eq.${SCHED_LOADED_YEAR}&order=match_no.asc`).catch(()=>null);
   if(rows===null) return false;
   rows.forEach(r=>{ SCHED_RESULTS[r.match_no]=r; });
   return true;
@@ -1633,50 +1635,79 @@ function schedStandings(){
   const arr = Object.values(st).sort((a,b)=> b.points-a.points || b.tbWins-a.tbWins || a.team.localeCompare(b.team));
   return {rows:arr, tieGroups, needPairs, pendingTb, regularDone, all};
 }
-function renderFixturesPane(){
-  const el = document.getElementById('sched-pane-fixtures');
-  const all = schedAllMatches();
-  const doneCount = all.filter(schedDone).length;
-  let html = `<div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Men's &middot; ${doneCount} of ${all.length} matches completed${SCHED_ADMIN?'':''}</div><div class="sch-grid">`;
-  html += all.map(m=>{
+function schedCardsHtml(admin, filter){
+  let all = schedAllMatches();
+  if(filter==='pending') all = all.filter(m=>!schedDone(m));
+  else if(filter==='completed') all = all.filter(schedDone);
+  const P = admin?'adm-':'';
+  if(!all.length) return '<div class="empty" style="padding:2rem 1rem;">'+(filter==='completed'?'No matches completed yet.':'No pending matches.')+'</div>';
+  return '<div class="sch-grid">'+all.map(m=>{
     const r = m.res||{}; const done = schedDone(m);
     const side = (team,idx)=>{
       const win = done && r.winner===team;
       const nm = r['name'+idx]||'', sc = r['score'+idx]==null?'':r['score'+idx];
-      const body = SCHED_ADMIN && !done
-        ? `<input class="sch-in" id="sch-n${idx}-${m.no}" placeholder="Player names" value="${schEsc(nm)}" maxlength="60"/><input class="sch-in sch-sc" id="sch-s${idx}-${m.no}" type="number" inputmode="numeric" min="0" placeholder="Score" value="${schEsc(sc)}"/>`
+      const body = admin && !done
+        ? `<input class="sch-in" id="${P}sch-n${idx}-${m.no}" placeholder="Player names" value="${schEsc(nm)}" maxlength="60"/><input class="sch-in sch-sc" id="${P}sch-s${idx}-${m.no}" type="number" inputmode="numeric" min="0" placeholder="Score" value="${schEsc(sc)}"/>`
         : `<div class="sch-nm">${schEsc(nm)||'<span style="opacity:.4">—</span>'}</div><div class="sch-score">${done?schEsc(sc):'–'}</div>`;
       return `<div class="sch-side ${win?'sch-win':''}"><div class="sch-team">${schEsc(team)}${win?' 🏆':''}</div>${body}</div>`;
     };
     const foot = done
-      ? `<div class="sch-foot">Winner: <b>${schEsc(r.winner)}</b>${m.tb?'':` &middot; +${m.pts} pts`}${SCHED_ADMIN?` <button class="btn-sm" onclick="schedReopen(${m.no})">Edit</button>`:''}</div>`
-      : (SCHED_ADMIN ? `<div class="sch-foot"><button class="btn-sm" style="border-color:var(--gold);color:var(--gold);" onclick="schedSubmit(${m.no})">Submit</button></div>` : `<div class="sch-foot" style="opacity:.6;">Not played yet</div>`);
+      ? `<div class="sch-foot">Winner: <b>${schEsc(r.winner)}</b>${m.tb?'':` &middot; +${m.pts} pts`}${admin?` <button class="btn-sm" onclick="schedReopen(${m.no})">Edit</button>`:''}</div>`
+      : (admin ? `<div class="sch-foot"><button class="btn-sm" style="border-color:var(--gold);color:var(--gold);" onclick="schedSubmit(${m.no})">Submit</button></div>` : `<div class="sch-foot" style="opacity:.6;">Not played yet</div>`);
     return `<div class="sch-card ${m.tb?'sch-tbcard':''}"><div class="sch-hd"><span class="sch-no">${m.tb?'Tiebreaker':'Match '+m.no}</span><span class="sch-cat">${schEsc(m.cat)}</span><span class="sch-pts">${m.tb?'Tiebreaker':m.pts+' pts'}</span></div><div class="sch-vs">${side(m.t1,1)}<div class="sch-v">VS</div>${side(m.t2,2)}</div>${foot}</div>`;
-  }).join('');
-  el.innerHTML = html+'</div>';
+  }).join('')+'</div>';
+}
+function schedRefreshBar(){
+  return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;"><div style="font-size:11px;color:var(--muted);" id="sch-count"></div><button class="btn-sm" onclick="schedPublicRefresh()">&#8635; Refresh</button></div>`;
+}
+async function schedPublicRefresh(){
+  await loadSchedResults(SCHED_VIEW_YEAR);
+  renderSchedulePane();
+  toast('Schedule refreshed','success');
+}
+function renderFixturesPane(){
+  const el = document.getElementById('sched-pane-fixtures');
+  const all = schedAllMatches();
+  el.innerHTML = schedRefreshBar() + schedCardsHtml(false,'all');
+  document.getElementById('sch-count').textContent = `Men's · ${all.filter(schedDone).length} of ${all.length} matches completed`;
+}
+function setAdmSchedFilter(f){ ADM_SCHED_FILTER=f; renderAdminSchedule(true); }
+async function renderAdminSchedule(noReload){
+  const el = document.getElementById('adm-pane-schedule'); if(!el) return;
+  if(!_connected){ el.innerHTML='<div class="empty">Connect to Supabase first.</div>'; return; }
+  if(!noReload){
+    const ok = await loadSchedResults(ACTIVE_SEASON);
+    if(!ok){ el.innerHTML='<div class="empty" style="padding:2rem 1rem;">Fixtures table not set up yet — run fixtures_table.sql in Supabase.</div>'; return; }
+  }
+  const all = schedAllMatches();
+  const done = all.filter(schedDone).length;
+  const st = schedStandings();
+  const pill=(k,l,n)=>`<button class="year-pill ${ADM_SCHED_FILTER===k?'active':''}" onclick="setAdmSchedFilter('${k}')">${l} (${n})</button>`;
+  let html = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">${pill('pending','Pending',all.length-done)}${pill('completed','Completed',done)}${pill('all','All',all.length)}<span style="margin-left:auto;font-size:12px;color:var(--muted);">${st.rows.map(r=>schEsc(r.team)+' '+r.points).join(' &middot; ')}</span></div>`;
+  html += schedCardsHtml(true, ADM_SCHED_FILTER);
+  if(st.needPairs.length){
+    html += `<div class="sch-tie"><div>Teams tied on points: <b>${st.tieGroups.map(g=>g.map(schEsc).join(' &amp; ')).join(' | ')}</b></div><button class="btn-sm" style="border-color:var(--gold);color:var(--gold);margin-top:8px;" onclick="schedAddTiebreakers()">Add tiebreaker match${st.needPairs.length>1?'es ('+st.needPairs.length+')':''}</button></div>`;
+  } else if(st.pendingTb){ html += `<div class="sch-tie">Tiebreaker match added — enter its score under Pending.</div>`; }
+  el.innerHTML = html;
 }
 function renderPointsPane(){
   const el = document.getElementById('sched-pane-leaderboard');
   const s = schedStandings();
-  let html = `<div style="overflow-x:auto;"><table class="sch-table"><thead><tr><th>Rank</th><th>Team</th><th>Points</th><th>Played</th><th>Remaining</th></tr></thead><tbody>`;
+  let html = `<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn-sm" onclick="schedPublicRefresh()">&#8635; Refresh</button></div><div style="overflow-x:auto;"><table class="sch-table"><thead><tr><th>Rank</th><th>Team</th><th>Points</th><th>Played</th><th>Remaining</th></tr></thead><tbody>`;
   html += s.rows.map((r,i)=>`<tr><td>${i+1}</td><td style="text-align:left;font-weight:700;">${schEsc(r.team)}</td><td style="color:var(--gold);font-weight:700;">${r.points}</td><td>${r.played}</td><td>${r.remaining}</td></tr>`).join('');
   html += '</tbody></table></div>';
-  if(s.needPairs.length){
-    const tied = s.tieGroups.map(g=>g.join(' &amp; ')).join(' | ');
-    html += `<div class="sch-tie"><div>Teams tied on points: <b>${tied}</b></div>${SCHED_ADMIN?`<button class="btn-sm" style="border-color:var(--gold);color:var(--gold);margin-top:8px;" onclick="schedAddTiebreakers()">Add tiebreaker match${s.needPairs.length>1?'es ('+s.needPairs.length+')':''}</button>`:'<div style="font-size:11px;color:var(--muted);margin-top:6px;">Tiebreaker match to be scheduled by admin.</div>'}</div>`;
-  } else if(s.pendingTb){
-    html += `<div class="sch-tie">Tiebreaker match added &mdash; see Fixtures tab.</div>`;
+  if(s.needPairs.length || s.pendingTb){
+    html += `<div class="sch-tie">Teams are tied on points — a tiebreaker match is being arranged (see Fixtures tab).</div>`;
   }
   el.innerHTML = html;
 }
 async function schedSave(row){
-  await sbUpsert('fixtures', Object.assign({season:SCHED_VIEW_YEAR}, row), true);
+  await sbUpsert('fixtures', Object.assign({season:SCHED_LOADED_YEAR}, row), true);
 }
 async function schedSubmit(no){
-  if(!SCHED_ADMIN) return;
   const m = schedAllMatches().find(x=>x.no===no); if(!m) return;
-  const n1=document.getElementById('sch-n1-'+no).value.trim(), n2=document.getElementById('sch-n2-'+no).value.trim();
-  const s1=document.getElementById('sch-s1-'+no).value, s2=document.getElementById('sch-s2-'+no).value;
+  const n1=document.getElementById('adm-sch-n1-'+no).value.trim(), n2=document.getElementById('adm-sch-n2-'+no).value.trim();
+  const s1=document.getElementById('adm-sch-s1-'+no).value, s2=document.getElementById('adm-sch-s2-'+no).value;
   if(s1===''||s2===''){ toast('Enter both scores','error'); return; }
   const a=parseInt(s1,10), b=parseInt(s2,10);
   if(isNaN(a)||isNaN(b)||a<0||b<0){ toast('Scores must be valid numbers','error'); return; }
@@ -1684,27 +1715,25 @@ async function schedSubmit(no){
   const row = Object.assign({}, m.res||{}, {match_no:no,name1:n1,name2:n2,score1:a,score2:b,winner:a>b?m.t1:m.t2});
   if(m.tb){ row.is_tiebreaker=true; row.category=m.cat; row.team1=m.t1; row.team2=m.t2; }
   delete row.created_at;
-  try{ await schedSave(row); SCHED_RESULTS[no]=Object.assign({season:SCHED_VIEW_YEAR},row); renderSchedulePane(); toast('Match '+(m.tb?'(tiebreaker) ':no+' ')+'submitted — '+row.winner+' wins','success'); }
+  try{ await schedSave(row); SCHED_RESULTS[no]=Object.assign({season:SCHED_LOADED_YEAR},row); renderAdminSchedule(true); toast('Match '+(m.tb?'(tiebreaker) ':no+' ')+'submitted — '+row.winner+' wins','success'); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
 async function schedReopen(no){
-  if(!SCHED_ADMIN) return;
   const m = schedAllMatches().find(x=>x.no===no); if(!m||!m.res) return;
   if(!confirm('Reopen this match to edit its score?')) return;
   const row = Object.assign({}, m.res, {winner:null}); delete row.created_at;
-  try{ await schedSave(row); SCHED_RESULTS[no]=row; renderSchedulePane(); }
+  try{ await schedSave(row); SCHED_RESULTS[no]=row; renderAdminSchedule(true); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
 async function schedAddTiebreakers(){
-  if(!SCHED_ADMIN) return;
   const s = schedStandings(); if(!s.needPairs.length) return;
   let next = Math.max(42, ...Object.keys(SCHED_RESULTS).map(Number))+1;
   try{
     for(const p of s.needPairs){
       const row = {match_no:next,is_tiebreaker:true,category:'Advanced + Foreign Advanced',team1:p[0],team2:p[1],name1:'',name2:'',winner:null};
-      await schedSave(row); SCHED_RESULTS[next]=Object.assign({season:SCHED_VIEW_YEAR},row); next++;
+      await schedSave(row); SCHED_RESULTS[next]=Object.assign({season:SCHED_LOADED_YEAR},row); next++;
     }
-    renderSchedulePane(); toast('Tiebreaker match added to Fixtures','success');
+    renderAdminSchedule(true); toast('Tiebreaker match added to Fixtures','success');
   } catch(e){ toast('Error: '+e.message,'error'); }
 }
 async function renderSchedulePane(){
@@ -3330,8 +3359,8 @@ document.addEventListener('click', (e)=>{
 
 function switchAdminTab(tab){
   _activeAdminTab = tab;
-  const labels = {players:'Players',teams:'Teams',baseprices:'Base Prices',auction:'Auction Results',gallery:'Gallery',liveauction:'Live Auction'};
-  ['players','teams','baseprices','auction','gallery','liveauction'].forEach(t=>{
+  const labels = {players:'Players',teams:'Teams',baseprices:'Base Prices',auction:'Auction Results',gallery:'Gallery',liveauction:'Live Auction',schedule:'Schedule'};
+  ['players','teams','baseprices','auction','gallery','liveauction','schedule'].forEach(t=>{
     document.getElementById('adm-pane-'+t).style.display = t===tab?'block':'none';
     document.getElementById('adm-tab-'+t).classList.toggle('active', t===tab);
     const mobBtn = document.getElementById('adm-tab-mob-'+t);
@@ -3344,6 +3373,7 @@ function switchAdminTab(tab){
   if(tab==='auction') renderAuctionResultsTable();
   if(tab==='gallery') renderAdminGallery();
   if(tab==='liveauction') renderAdminLiveAuction();
+  if(tab==='schedule') renderAdminSchedule();
 }
 
 async function refreshCurrentAdminTab(){
@@ -3359,6 +3389,7 @@ async function refreshCurrentAdminTab(){
     else if(_activeAdminTab==='auction') await renderAuctionResultsTable();
     else if(_activeAdminTab==='gallery') await renderAdminGallery();
     else if(_activeAdminTab==='liveauction') await renderAdminLiveAuction();
+    else if(_activeAdminTab==='schedule') await renderAdminSchedule();
     if(icon){ icon.classList.remove('refresh-spin'); icon.innerHTML = '&#10003;'; }
   } catch(e){
     if(icon){ icon.classList.remove('refresh-spin'); icon.innerHTML = '&#10005;'; }
