@@ -372,7 +372,13 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 .sch-table th,.sch-table td{padding:10px 8px;border-bottom:1px solid rgba(255,255,255,0.08);font-size:13px;}
 .sch-table th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:1px;}
 .sch-tie{margin-top:16px;padding:12px;border:1px dashed var(--gold);border-radius:8px;font-size:12px;}
-@media(max-width:680px){.sch-grid{grid-template-columns:1fr;}}
+@media(max-width:680px){.sch-grid{grid-template-columns:1fr;}.sch-table th,.sch-table td{padding:8px 3px!important;font-size:12px!important;}.sch-table th{font-size:9px!important;letter-spacing:0!important;}.sch-psec{padding:10px 8px;}}
+.sch-psecs{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px;}
+.sch-psec{border:1px solid rgba(255,216,77,0.2);border-radius:10px;padding:12px;}
+.sch-ptitle{font-size:12px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;border-left:3px solid var(--gold);padding-left:8px;margin-bottom:6px;font-weight:700;}
+.sch-tbbox{margin-top:12px;font-size:12px;}
+.sch-tied{color:#ffb4a8;margin-bottom:8px;font-weight:600;}.sch-ok{color:var(--green);margin-bottom:8px;}.sch-mut{color:var(--muted);margin-bottom:8px;}
+.btn-sm.sch-off,.btn-sm:disabled{opacity:.45;cursor:not-allowed;}
 .auc-tab{padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;font-weight:500;}
 .auc-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
 .auc-tab:hover:not(.active){color:var(--text);}
@@ -1585,11 +1591,20 @@ async function renderSchedule(){
   if(!ok){ document.getElementById('sched-pane-'+SCHED_SUBTAB).innerHTML='<div class="empty" style="padding:2rem 1rem;">Fixtures table not set up yet — admin needs to run the fixtures SQL.</div>'; return; }
   renderSchedulePane();
 }
-let SCHED_LOADED_YEAR=null, ADM_SCHED_FILTER='pending';
-let SCHED_RESULTS={};   // match_no -> saved row
-const MENS_FIXTURES=[[1,"Advanced + Foreign Advanced","Rashtrakuta","Hoysala",3],[2,"B1 & B2","Chalukya","Rashtrakuta",2],[3,"Advanced + Intermediate +","Hoysala","Chalukya",3],[4,"Foreign Intermediate+","Rashtrakuta","Hoysala",3],[5,"Foreign Intermediate+ 1 & Intermediate+ 2","Chalukya","Rashtrakuta",3],[6,"I1 & I3","Chalukya","Rashtrakuta",2],[7,"Advanced + Foreign Advanced","Hoysala","Chalukya",3],[8,"Advanced + Intermediate +","Rashtrakuta","Hoysala",3],[9,"Foreign Intermediate+ 1 & Intermediate+ 2","Rashtrakuta","Hoysala",3],[10,"Foreign Intermediate+ 2 & Intermediate+ 1","Rashtrakuta","Hoysala",3],[11,"Foreign Advanced & Intermediate +","Chalukya","Rashtrakuta",3],[12,"I4 & I5","Hoysala","Chalukya",2],[13,"I3 & I4","Rashtrakuta","Hoysala",2],[14,"I 1 & I2","Hoysala","Chalukya",2],[15,"B2 & B3","Rashtrakuta","Hoysala",2],[16,"I4 & I5","Chalukya","Rashtrakuta",2],[17,"B1 & B3","Chalukya","Rashtrakuta",2],[18,"B1 & B2","Rashtrakuta","Hoysala",2],[19,"I2 & I5","Rashtrakuta","Hoysala",2],[20,"Foreign Intermediate+ 2 & Intermediate+ 1","Chalukya","Hoysala",3],[21,"I4 & I5","Rashtrakuta","Hoysala",2],[22,"Foreign Intermediate+","Hoysala","Chalukya",3],[23,"Advanced + Intermediate +","Chalukya","Rashtrakuta",3],[24,"Foreign Advanced & Intermediate +","Rashtrakuta","Hoysala",3],[25,"I 1 & I2","Rashtrakuta","Hoysala",2],[26,"I3 & I4","Chalukya","Rashtrakuta",2],[27,"I2 & I5","Chalukya","Rashtrakuta",2],[28,"I1 & I3","Rashtrakuta","Hoysala",2],[29,"B2 & B3","Chalukya","Rashtrakuta",2],[30,"B1 & B3","Rashtrakuta","Hoysala",2],[31,"B1 & B2","Hoysala","Chalukya",2],[32,"I2 & I5","Hoysala","Chalukya",2],[33,"Foreign Intermediate+ 2 & Intermediate+ 1","Chalukya","Rashtrakuta",3],[34,"I3 & I4","Hoysala","Chalukya",2],[35,"Foreign Advanced & Intermediate +","Hoysala","Chalukya",3],[36,"B1 & B3","Hoysala","Chalukya",2],[37,"Foreign Intermediate+","Chalukya","Rashtrakuta",3],[38,"Foreign Intermediate+ 1 & Intermediate+ 2","Hoysala","Chalukya",3],[39,"Advanced + Foreign Advanced","Chalukya","Rashtrakuta",3],[40,"B2 & B3","Hoysala","Chalukya",2],[41,"I1 & I3","Hoysala","Chalukya",2],[42,"I 1 & I2","Chalukya","Rashtrakuta",2]]; // [match_no, category, team1, team2, points]
-const MENS_TEAMS=['Chalukya','Hoysala','Rashtrakuta'];
+let SCHED_LOADED_YEAR=null, ADM_SCHED_FILTER='pending', ADM_SCHED_TAB='matches';
+let SCHED_RESULTS={};   // match_no -> saved row (match_no ranges: Men's 1-999, Women's 1001-1999, Kids 2001-2999)
+const SCHED_TEAMS=['Chalukya','Hoysala','Rashtrakuta'];
+const SCHED_DIVS=[['mens',"Men's",0,999],['womens',"Women's",1000,1999],['kids','Kids',2000,2999]];
+const DIV_FIXTURES={"mens":[[1,"A & FA","Rashtrakuta","Hoysala",3],[2,"B1 & B2","Chalukya","Rashtrakuta",2],[3,"A & I+1","Hoysala","Chalukya",3],[4,"FI+1 & FI+2","Rashtrakuta","Hoysala",3],[5,"FI+1 & I+2","Chalukya","Rashtrakuta",3],[6,"I1 & I3","Chalukya","Rashtrakuta",2],[7,"A & FA","Hoysala","Chalukya",3],[8,"A & I+1","Rashtrakuta","Hoysala",3],[9,"FI+1 & I+2","Rashtrakuta","Hoysala",3],[10,"FI+2 & I+1","Rashtrakuta","Hoysala",3],[11,"FA & I+2","Chalukya","Rashtrakuta",3],[12,"I4 & I5","Hoysala","Chalukya",2],[13,"I3 & I4","Rashtrakuta","Hoysala",2],[14,"I1 & I2","Hoysala","Chalukya",2],[15,"B2 & B3","Rashtrakuta","Hoysala",2],[16,"I4 & I5","Chalukya","Rashtrakuta",2],[17,"B1 & B3","Chalukya","Rashtrakuta",2],[18,"B1 & B2","Rashtrakuta","Hoysala",2],[19,"I2 & I5","Rashtrakuta","Hoysala",2],[20,"FI+2 & I+1","Chalukya","Hoysala",3],[21,"I4 & I5","Rashtrakuta","Hoysala",2],[22,"FI+1 & FI+2","Hoysala","Chalukya",3],[23,"A & I+1","Chalukya","Rashtrakuta",3],[24,"FA & I+2","Rashtrakuta","Hoysala",3],[25,"I1 & I2","Rashtrakuta","Hoysala",2],[26,"I3 & I4","Chalukya","Rashtrakuta",2],[27,"I2 & I5","Chalukya","Rashtrakuta",2],[28,"I1 & I3","Rashtrakuta","Hoysala",2],[29,"B2 & B3","Chalukya","Rashtrakuta",2],[30,"B1 & B3","Rashtrakuta","Hoysala",2],[31,"B1 & B2","Hoysala","Chalukya",2],[32,"I2 & I5","Hoysala","Chalukya",2],[33,"FI+2 & I+1","Chalukya","Rashtrakuta",3],[34,"I3 & I4","Hoysala","Chalukya",2],[35,"FA & I+2","Hoysala","Chalukya",3],[36,"B1 & B3","Hoysala","Chalukya",2],[37,"FI+1 & FI+2","Chalukya","Rashtrakuta",3],[38,"FI+1 & I+2","Hoysala","Chalukya",3],[39,"A & FA","Chalukya","Rashtrakuta",3],[40,"B2 & B3","Hoysala","Chalukya",2],[41,"I1 & I3","Hoysala","Chalukya",2],[42,"I1 & I2","Chalukya","Rashtrakuta",2]],"womens":[[1001,"B2 & B5","Rashtrakuta","Hoysala",1],[1002,"B3 & B4","Chalukya","Hoysala",1],[1003,"I2 & I3","Hoysala","Rashtrakuta",2],[1004,"B2 & B5","Rashtrakuta","Chalukya",1],[1005,"I1 & I4","Chalukya","Hoysala",2],[1006,"B1 & B2","Chalukya","Rashtrakuta",1],[1007,"I1 & I2","Chalukya","Rashtrakuta",2],[1008,"B4 & B5","Hoysala","Rashtrakuta",1],[1009,"B1 & B2","Hoysala","Chalukya",1],[1010,"I2 & I3","Rashtrakuta","Chalukya",2],[1011,"I3 & I4","Hoysala","Rashtrakuta",2],[1012,"I2 & I3","Hoysala","Chalukya",2],[1013,"I1 & I2","Rashtrakuta","Hoysala",2],[1014,"I3 & I4","Rashtrakuta","Chalukya",2],[1015,"B2 & B5","Hoysala","Chalukya",1],[1016,"I1 & I4","Rashtrakuta","Hoysala",2],[1017,"I3 & I4","Chalukya","Hoysala",2],[1018,"B4 & B5","Rashtrakuta","Chalukya",1],[1019,"B1 & B3","Rashtrakuta","Hoysala",1],[1020,"I1 & I2","Chalukya","Hoysala",2],[1021,"B1 & B2","Rashtrakuta","Hoysala",1],[1022,"B4 & B5","Chalukya","Hoysala",1],[1023,"B1 & B3","Rashtrakuta","Chalukya",1],[1024,"B3 & B4","Rashtrakuta","Hoysala",1],[1025,"B1 & B3","Chalukya","Hoysala",1],[1026,"I1 & I4","Chalukya","Rashtrakuta",2],[1027,"B3 & B4","Rashtrakuta","Chalukya",1]],"kids":[[2001,"I1 & I2","Hoysala","Rashtrakuta",1],[2002,"B1 & B3","Rashtrakuta","Chalukya",1],[2003,"I1 & I2","Hoysala","Chalukya",1],[2004,"B1 & B3","Hoysala","Rashtrakuta",1],[2005,"B1 & B2","Rashtrakuta","Chalukya",1],[2006,"B2 & B5","Rashtrakuta","Hoysala",1],[2007,"B4 & B5","Hoysala","Chalukya",1],[2008,"B3 & B4","Chalukya","Rashtrakuta",1],[2009,"B2 & B5","Chalukya","Hoysala",1],[2010,"I1 & I2","Hoysala","Rashtrakuta",1],[2011,"B4 & B5","Rashtrakuta","Chalukya",1],[2012,"B1 & B2","Hoysala","Rashtrakuta",1],[2013,"I1 & I2","Chalukya","Rashtrakuta",1],[2014,"B1 & B2","Chalukya","Hoysala",1],[2015,"B3 & B4","Rashtrakuta","Hoysala",1],[2016,"B1 & B3","Chalukya","Hoysala",1],[2017,"I1 & I2","Chalukya","Rashtrakuta",1],[2018,"B4 & B5","Hoysala","Rashtrakuta",1],[2019,"I1 & I2","Chalukya","Hoysala",1],[2020,"B2 & B5","Chalukya","Rashtrakuta",1],[2021,"B3 & B4","Hoysala","Chalukya",1]]}; // [match_no, category code, team1, team2, points]
+const DIV_PLAYERS={"mens":{"Chalukya":{"B1 & B2":"Girish TM & Satish","A & I+1":"Prashanth & Ashwin","FI+1 & I+2":"Deepak Kumar & Sachin","I1 & I3":"Krishnamurthy Mayya & Harsha","A & FA":"Prashanth & Selva","FA & I+2":"Selva & Sachin","I4 & I5":"Sandesh Shetty & Sirish","I1 & I2":"Krishnamurthy Mayya & Deepak Joshi","B1 & B3":"Girish TM & Ashwin Kulkarni","FI+2 & I+1":"Chinmaya & Ashwin","FI+1 & FI+2":"Deepak Kumar & Chinmaya","I3 & I4":"Harsha & Sandesh Shetty","I2 & I5":"Deepak Joshi & Sirish","B2 & B3":"Satish & Ashwin Kulkarni"},"Hoysala":{"A & FA":"Harisha K & Santhosh Kumar","A & I+1":"Harisha K & Sumanth","FI+1 & FI+2":"Anoop & Bushan","FI+1 & I+2":"Anoop & Rajeev","FI+2 & I+1":"Bushan & Sumanth","I4 & I5":"Shrikar & Madhu","I3 & I4":"Mani & Shrikar","I1 & I2":"Krishna & Anand","B2 & B3":"Sagar & Athinesh","B1 & B2":"Bharath & Sagar","I2 & I5":"Anand & Madhu","FA & I+2":"Santhosh Kumar & Rajeev","I1 & I3":"Krishna & Mani","B1 & B3":"Bharath & Athinesh"},"Rashtrakuta":{"A & FA":"Harish N & Karthik","B1 & B2":"Karthik & Rishab","FI+1 & FI+2":"Ramdeep & Athri","FI+1 & I+2":"Ramdeep & Suhas","I1 & I3":"Vishesh & Manju","A & I+1":"Harish N & Pradeep","FI+2 & I+1":"Athri & Pradeep","FA & I+2":"Karthik & Suhas","I3 & I4":"Manju & Deepak Rao","B2 & B3":"Rishab & Kishore","I4 & I5":"Deepak Rao & Ashwath","B1 & B3":"Karthik & Kishore","I2 & I5":"Shashank & Ashwath","I1 & I2":"Vishesh & Shashank"}},"womens":{"Chalukya":{"B3 & B4":"Lakshmi & Suma","B2 & B5":"Sandhya & Swetha","I1 & I4":"Rachana & Aisiri","B1 & B2":"Manasa & Sandhya","I1 & I2":"Rachana & Sahana","I2 & I3":"Sahana & Vibha","I3 & I4":"Vibha & Aisiri","B4 & B5":"Suma & Swetha","B1 & B3":"Manasa & Lakshmi"},"Hoysala":{"B2 & B5":"Soudarya & Gayathri","B3 & B4":"Anusha & Nandini","I2 & I3":"Divya & Akhila","I1 & I4":"Adithi & Amrutha","B4 & B5":"Nandini & Gayathri","B1 & B2":"Reshma & Soudarya","I3 & I4":"Akhila & Amrutha","I1 & I2":"Adithi & Divya","B1 & B3":"Reshma & Anusha"},"Rashtrakuta":{"B2 & B5":"Mansi & Kavya","I2 & I3":"Bhargavi & Anitha","B1 & B2":"Sudha & Mansi","I1 & I2":"Akshatha & Bhargavi","B4 & B5":"Sindhu & Kavya","I3 & I4":"Anitha & Chaitra","I1 & I4":"Akshatha & Chaitra","B1 & B3":"Sudha & Sushma","B3 & B4":"Sushma & Sindhu"}},"kids":{"Chalukya":{"B1 & B3":"Shriyansh & Krishna K","I1 & I2":"Shashank & Pranavi Bhat","B1 & B2":"Shriyansh & Dishank","B4 & B5":"Keshvin & Ruthvi","B3 & B4":"Krishna K & Keshvin","B2 & B5":"Ruthvi & Dishank"},"Hoysala":{"I1 & I2":"Hrudi & Chethna","B1 & B3":"Pragathi & Avyukth","B2 & B5":"Manogna & Maaya","B4 & B5":"Mahathi & Maaya","B1 & B2":"Pragathi & Manogna","B3 & B4":"Avyukth & Mahathi"},"Rashtrakuta":{"I1 & I2":"Sparsh & Jitamanyu","B1 & B3":"Vaibav & Medha","B1 & B2":"Vaibav & Vallabh","B2 & B5":"Vallabh & Ayush","B3 & B4":"Medha & Sajan","B4 & B5":"Sajan & Ayush"}}};  // division -> team -> category code -> pair
+const TB_CATS={mens:['A & FA'],womens:['I1 & I2','I3 & I4','I1 & I4','I2 & I3'],kids:['I1 & I2']};
+let SCHED_DIV='mens', ADM_SCHED_DIV='mens';
 function schEsc(t){return String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function schedDivLabel(d){ return (SCHED_DIVS.find(x=>x[0]===d)||[])[1]||d; }
+function schedDivOf(no){ const x=SCHED_DIVS.find(d=>no>=d[2]&&no<=d[3]); return x?x[0]:'mens'; }
+function schedDispNo(no){ return no%1000; }
+function schedTbPts(div,cat){ if(div==='mens') return 3; if(div==='womens') return String(cat).charAt(0)==='I'?2:1; return 1; }
+function schedPlayers(div,team,cat){ return ((DIV_PLAYERS[div]||{})[team]||{})[cat]||''; }
 async function loadSchedResults(year){
   SCHED_RESULTS={}; SCHED_LOADED_YEAR=year||SCHED_VIEW_YEAR;
   const rows = await sbGet('fixtures',`select=*&season=eq.${SCHED_LOADED_YEAR}&order=match_no.asc`).catch(()=>null);
@@ -1597,46 +1612,43 @@ async function loadSchedResults(year){
   rows.forEach(r=>{ SCHED_RESULTS[r.match_no]=r; });
   return true;
 }
-function schedAllMatches(){
-  const list = MENS_FIXTURES.map(f=>({no:f[0],cat:f[1],t1:f[2],t2:f[3],pts:f[4],tb:false,res:SCHED_RESULTS[f[0]]||null}));
-  Object.values(SCHED_RESULTS).filter(r=>r.is_tiebreaker).forEach(r=>{
-    list.push({no:r.match_no,cat:r.category||'Advanced + Foreign Advanced',t1:r.team1,t2:r.team2,pts:0,tb:true,res:r});
+function schedDone(m){ return !!(m.res && m.res.winner); }
+function schedMatches(div){
+  const list = (DIV_FIXTURES[div]||[]).map(f=>({no:f[0],cat:f[1],t1:f[2],t2:f[3],pts:f[4],tb:false,res:SCHED_RESULTS[f[0]]||null}));
+  Object.values(SCHED_RESULTS).filter(r=>r.is_tiebreaker && schedDivOf(r.match_no)===div).forEach(r=>{
+    list.push({no:r.match_no,cat:r.category,t1:r.team1,t2:r.team2,pts:schedTbPts(div,r.category),tb:true,res:r});
   });
   return list.sort((a,b)=>a.no-b.no);
 }
-function schedDone(m){ return !!(m.res && m.res.winner); }
-function schedStandings(){
-  const all = schedAllMatches();
+function schedStandings(div){
+  const all = schedMatches(div);
   const st = {};
-  MENS_TEAMS.forEach(t=>{ st[t]={team:t,points:0,played:0,remaining:0,tbWins:0}; });
+  SCHED_TEAMS.forEach(t=>{ st[t]={team:t,points:0,played:0,remaining:0}; });
   all.forEach(m=>{
-    if(m.tb){
-      if(schedDone(m) && st[m.res.winner]) st[m.res.winner].tbWins++;
-      return;
-    }
-    [m.t1,m.t2].forEach(t=>{ if(!st[t]) return; if(schedDone(m)) st[t].played++; else st[t].remaining++; });
+    if(!m.tb) [m.t1,m.t2].forEach(t=>{ if(!st[t]) return; if(schedDone(m)) st[t].played++; else st[t].remaining++; });
     if(schedDone(m) && st[m.res.winner]) st[m.res.winner].points += m.pts;
   });
-  const regularDone = all.filter(m=>!m.tb).every(schedDone);
-  // tie groups (same points)
+  const regular = all.filter(m=>!m.tb), tbs = all.filter(m=>m.tb);
+  const regularDone = regular.length>0 && regular.every(schedDone);
+  const pendingTb = tbs.some(m=>!schedDone(m));
   const byPts = {};
   Object.values(st).forEach(s=>{ (byPts[s.points]=byPts[s.points]||[]).push(s.team); });
   const tieGroups = Object.values(byPts).filter(g=>g.length>1);
-  // pairs needing tiebreaker, and pending tiebreakers
-  let needPairs=[], pendingTb=false;
-  if(regularDone){
-    tieGroups.forEach(g=>{
-      for(let i=0;i<g.length;i++) for(let j=i+1;j<g.length;j++){
-        const ex = all.find(m=>m.tb && ((m.t1===g[i]&&m.t2===g[j])||(m.t1===g[j]&&m.t2===g[i])));
-        if(!ex) needPairs.push([g[i],g[j]]); else if(!schedDone(ex)) pendingTb=true;
-      }
-    });
-  }
-  const arr = Object.values(st).sort((a,b)=> b.points-a.points || b.tbWins-a.tbWins || a.team.localeCompare(b.team));
-  return {rows:arr, tieGroups, needPairs, pendingTb, regularDone, all};
+  const allDone = regularDone && !pendingTb;
+  const canGenerate = allDone && tieGroups.length>0;
+  const rows = Object.values(st).sort((a,b)=> b.points-a.points || a.team.localeCompare(b.team));
+  return {rows, tieGroups, regularDone, pendingTb, allDone, canGenerate, total:regular.length, done:regular.filter(schedDone).length, all};
 }
-function schedCardsHtml(admin, filter){
-  let all = schedAllMatches();
+function schedDivBar(admin){
+  const cur = admin?ADM_SCHED_DIV:SCHED_DIV, fn = admin?'setAdmSchedDiv':'setPubSchedDiv';
+  return `<div class="auc-tab-bar" style="margin-bottom:12px;">${SCHED_DIVS.map(d=>`<button class="auc-tab ${cur===d[0]?'active':''}" onclick="${fn}('${d[0]}')">${d[1]}</button>`).join('')}</div>`;
+}
+function setPubSchedDiv(d){ SCHED_DIV=d; renderSchedulePane(); }
+function setAdmSchedDiv(d){ ADM_SCHED_DIV=d; renderAdminSchedule(true); }
+function setAdmSchedTab(t){ ADM_SCHED_TAB=t; renderAdminSchedule(true); }
+function setAdmSchedFilter(f){ ADM_SCHED_FILTER=f; renderAdminSchedule(true); }
+function schedCardsHtml(div, admin, filter){
+  let all = schedMatches(div);
   if(filter==='pending') all = all.filter(m=>!schedDone(m));
   else if(filter==='completed') all = all.filter(schedDone);
   const P = admin?'adm-':'';
@@ -1645,18 +1657,41 @@ function schedCardsHtml(admin, filter){
     const r = m.res||{}; const done = schedDone(m);
     const side = (team,idx)=>{
       const win = done && r.winner===team;
-      const nm = r['name'+idx]||'', sc = r['score'+idx]==null?'':r['score'+idx];
+      const nm = (r['name'+idx]!=null && r['name'+idx]!=='') ? r['name'+idx] : schedPlayers(div,team,m.cat);
+      const sc = r['score'+idx]==null?'':r['score'+idx];
       const body = admin && !done
         ? `<input class="sch-in" id="${P}sch-n${idx}-${m.no}" placeholder="Player names" value="${schEsc(nm)}" maxlength="60"/><input class="sch-in sch-sc" id="${P}sch-s${idx}-${m.no}" type="number" inputmode="numeric" min="0" placeholder="Score" value="${schEsc(sc)}"/>`
         : `<div class="sch-nm">${schEsc(nm)||'<span style="opacity:.4">—</span>'}</div><div class="sch-score">${done?schEsc(sc):'–'}</div>`;
       return `<div class="sch-side ${win?'sch-win':''}"><div class="sch-team">${schEsc(team)}${win?' 🏆':''}</div>${body}</div>`;
     };
+    const ptsTxt = m.pts+' pt'+(m.pts===1?'':'s');
+    const hasSaved = (r.score1!=null || (r.name1 && r.name1!==schedPlayers(div,m.t1,m.cat)) || (r.name2 && r.name2!==schedPlayers(div,m.t2,m.cat)));
     const foot = done
-      ? `<div class="sch-foot">Winner: <b>${schEsc(r.winner)}</b>${m.tb?'':` &middot; +${m.pts} pts`}${admin?` <button class="btn-sm" onclick="schedReopen(${m.no})">Edit</button>`:''}</div>`
-      : (admin ? `<div class="sch-foot"><button class="btn-sm" style="border-color:var(--gold);color:var(--gold);" onclick="schedSubmit(${m.no})">Submit</button></div>` : `<div class="sch-foot" style="opacity:.6;">Not played yet</div>`);
-    return `<div class="sch-card ${m.tb?'sch-tbcard':''}"><div class="sch-hd"><span class="sch-no">${m.tb?'Tiebreaker':'Match '+m.no}</span><span class="sch-cat">${schEsc(m.cat)}</span><span class="sch-pts">${m.tb?'Tiebreaker':m.pts+' pts'}</span></div><div class="sch-vs">${side(m.t1,1)}<div class="sch-v">VS</div>${side(m.t2,2)}</div>${foot}</div>`;
+      ? `<div class="sch-foot">Winner: <b>${schEsc(r.winner)}</b> &middot; +${m.pts} pt${m.pts===1?'':'s'}${admin?` <button class="btn-sm" onclick="schedReopen(${m.no})">Edit</button> <button class="btn-sm danger" onclick="schedReset(${m.no})">Reset</button>`:''}</div>`
+      : (admin ? `<div class="sch-foot"><button class="btn-sm" style="border-color:var(--gold);color:var(--gold);" onclick="schedSubmit(${m.no})">Submit</button>${m.tb?` <button class="btn-sm danger" onclick="schedRemoveTb(${m.no})">Remove</button>`:''}${hasSaved?` <button class="btn-sm danger" onclick="schedReset(${m.no})">Reset</button>`:''}</div>` : `<div class="sch-foot" style="opacity:.6;">Not played yet</div>`);
+    return `<div class="sch-card ${m.tb?'sch-tbcard':''}"><div class="sch-hd"><span class="sch-no">${m.tb?'Tiebreaker':'Match '+schedDispNo(m.no)}</span><span class="sch-cat">${schEsc(m.cat)}</span><span class="sch-pts">${ptsTxt}</span></div><div class="sch-vs">${side(m.t1,1)}<div class="sch-v">VS</div>${side(m.t2,2)}</div>${foot}</div>`;
   }).join('')+'</div>';
 }
+function schedPointsSection(div, admin){
+  const s = schedStandings(div);
+  let h = `<div class="sch-psec"><div class="sch-ptitle">${schedDivLabel(div)}</div><div style="overflow-x:auto;"><table class="sch-table"><thead><tr><th>Rank</th><th>Team</th><th>Points</th><th>Played</th><th>Remaining</th></tr></thead><tbody>`;
+  h += s.rows.map((r,i)=>`<tr><td>${i+1}</td><td style="text-align:left;font-weight:700;">${schEsc(r.team)}</td><td style="color:var(--gold);font-weight:700;">${r.points}</td><td>${r.played}</td><td>${r.remaining}</td></tr>`).join('');
+  h += '</tbody></table></div><div class="sch-tbbox">';
+  const tiedTxt = s.tieGroups.map(g=>g.map(schEsc).join(' &amp; ')).join(' | ');
+  let status;
+  if(s.pendingTb) status = '<div class="sch-tied">Tied – tiebreaker pending</div>';
+  else if(!s.regularDone) status = `<div class="sch-mut">Tiebreaker available after all ${s.total} matches are submitted (${s.done} of ${s.total} done)</div>`;
+  else if(s.canGenerate) status = admin ? `<div class="sch-tied">Tied: ${tiedTxt}</div>` : '<div class="sch-tied">Tied – tiebreaker pending</div>';
+  else status = '<div class="sch-ok">&#10003; No tie</div>';
+  h += status;
+  if(admin){
+    if(div==='womens') h += `<select class="sch-in" id="sch-tbcat-womens" ${s.canGenerate?'':'disabled'} style="margin-bottom:8px;">${TB_CATS.womens.map(c=>`<option value="${schEsc(c)}">${schEsc(c)}</option>`).join('')}</select><br>`;
+    const lbl = div==='mens'?' (A &amp; FA)':div==='kids'?' (I1 &amp; I2)':' (captains’ category)';
+    h += `<button class="btn-sm ${s.canGenerate?'':'sch-off'}" ${s.canGenerate?'':'disabled'} ${s.canGenerate?'style="border-color:var(--gold);color:var(--gold);"':''} onclick="schedGenerateTb('${div}')">Generate tiebreaker${lbl}</button>`;
+  }
+  return h+'</div></div>';
+}
+function schedPointsHtml(admin){ return '<div class="sch-psecs">'+SCHED_DIVS.map(d=>schedPointsSection(d[0],admin)).join('')+'</div>'; }
 function schedRefreshBar(){
   return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;"><div style="font-size:11px;color:var(--muted);" id="sch-count"></div><button class="btn-sm" onclick="schedPublicRefresh()">&#8635; Refresh</button></div>`;
 }
@@ -1667,11 +1702,14 @@ async function schedPublicRefresh(){
 }
 function renderFixturesPane(){
   const el = document.getElementById('sched-pane-fixtures');
-  const all = schedAllMatches();
-  el.innerHTML = schedRefreshBar() + schedCardsHtml(false,'all');
-  document.getElementById('sch-count').textContent = `Men's · ${all.filter(schedDone).length} of ${all.length} matches completed`;
+  const all = schedMatches(SCHED_DIV);
+  el.innerHTML = schedDivBar(false) + schedRefreshBar() + schedCardsHtml(SCHED_DIV,false,'all');
+  document.getElementById('sch-count').textContent = `${schedDivLabel(SCHED_DIV)} · ${all.filter(schedDone).length} of ${all.length} matches completed`;
 }
-function setAdmSchedFilter(f){ ADM_SCHED_FILTER=f; renderAdminSchedule(true); }
+function renderPointsPane(){
+  const el = document.getElementById('sched-pane-leaderboard');
+  el.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn-sm" onclick="schedPublicRefresh()">&#8635; Refresh</button></div>` + schedPointsHtml(false);
+}
 async function renderAdminSchedule(noReload){
   const el = document.getElementById('adm-pane-schedule'); if(!el) return;
   if(!_connected){ el.innerHTML='<div class="empty">Connect to Supabase first.</div>'; return; }
@@ -1679,25 +1717,16 @@ async function renderAdminSchedule(noReload){
     const ok = await loadSchedResults(ACTIVE_SEASON);
     if(!ok){ el.innerHTML='<div class="empty" style="padding:2rem 1rem;">Fixtures table not set up yet — run fixtures_table.sql in Supabase.</div>'; return; }
   }
-  const all = schedAllMatches();
-  const done = all.filter(schedDone).length;
-  const st = schedStandings();
-  const pill=(k,l,n)=>`<button class="year-pill ${ADM_SCHED_FILTER===k?'active':''}" onclick="setAdmSchedFilter('${k}')">${l} (${n})</button>`;
-  let html = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">${pill('pending','Pending',all.length-done)}${pill('completed','Completed',done)}${pill('all','All',all.length)}<span style="margin-left:auto;font-size:12px;color:var(--muted);">${st.rows.map(r=>schEsc(r.team)+' '+r.points).join(' &middot; ')}</span></div>`;
-  html += schedCardsHtml(true, ADM_SCHED_FILTER);
-  if(st.needPairs.length){
-    html += `<div class="sch-tie"><div>Teams tied on points: <b>${st.tieGroups.map(g=>g.map(schEsc).join(' &amp; ')).join(' | ')}</b></div><button class="btn-sm" style="border-color:var(--gold);color:var(--gold);margin-top:8px;" onclick="schedAddTiebreakers()">Add tiebreaker match${st.needPairs.length>1?'es ('+st.needPairs.length+')':''}</button></div>`;
-  } else if(st.pendingTb){ html += `<div class="sch-tie">Tiebreaker match added — enter its score under Pending.</div>`; }
-  el.innerHTML = html;
-}
-function renderPointsPane(){
-  const el = document.getElementById('sched-pane-leaderboard');
-  const s = schedStandings();
-  let html = `<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn-sm" onclick="schedPublicRefresh()">&#8635; Refresh</button></div><div style="overflow-x:auto;"><table class="sch-table"><thead><tr><th>Rank</th><th>Team</th><th>Points</th><th>Played</th><th>Remaining</th></tr></thead><tbody>`;
-  html += s.rows.map((r,i)=>`<tr><td>${i+1}</td><td style="text-align:left;font-weight:700;">${schEsc(r.team)}</td><td style="color:var(--gold);font-weight:700;">${r.points}</td><td>${r.played}</td><td>${r.remaining}</td></tr>`).join('');
-  html += '</tbody></table></div>';
-  if(s.needPairs.length || s.pendingTb){
-    html += `<div class="sch-tie">Teams are tied on points — a tiebreaker match is being arranged (see Fixtures tab).</div>`;
+  let html = `<div class="auc-tab-bar" style="margin-bottom:12px;"><button class="auc-tab ${ADM_SCHED_TAB==='matches'?'active':''}" onclick="setAdmSchedTab('matches')">Matches</button><button class="auc-tab ${ADM_SCHED_TAB==='points'?'active':''}" onclick="setAdmSchedTab('points')">Points</button></div>`;
+  if(ADM_SCHED_TAB==='points'){
+    html += schedPointsHtml(true);
+  } else {
+    const all = schedMatches(ADM_SCHED_DIV), done = all.filter(schedDone).length;
+    const pill=(k,l,n)=>`<button class="year-pill ${ADM_SCHED_FILTER===k?'active':''}" onclick="setAdmSchedFilter('${k}')">${l} (${n})</button>`;
+    const st = schedStandings(ADM_SCHED_DIV);
+    html += schedDivBar(true);
+    html += `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">${pill('pending','Pending',all.length-done)}${pill('completed','Completed',done)}${pill('all','All',all.length)}<span style="margin-left:auto;font-size:12px;color:var(--muted);">${st.rows.map(r=>schEsc(r.team)+' '+r.points).join(' &middot; ')}</span></div>`;
+    html += schedCardsHtml(ADM_SCHED_DIV,true,ADM_SCHED_FILTER);
   }
   el.innerHTML = html;
 }
@@ -1705,7 +1734,8 @@ async function schedSave(row){
   await sbUpsert('fixtures', Object.assign({season:SCHED_LOADED_YEAR}, row), true);
 }
 async function schedSubmit(no){
-  const m = schedAllMatches().find(x=>x.no===no); if(!m) return;
+  const div = schedDivOf(no);
+  const m = schedMatches(div).find(x=>x.no===no); if(!m) return;
   const n1=document.getElementById('adm-sch-n1-'+no).value.trim(), n2=document.getElementById('adm-sch-n2-'+no).value.trim();
   const s1=document.getElementById('adm-sch-s1-'+no).value, s2=document.getElementById('adm-sch-s2-'+no).value;
   if(s1===''||s2===''){ toast('Enter both scores','error'); return; }
@@ -1715,25 +1745,46 @@ async function schedSubmit(no){
   const row = Object.assign({}, m.res||{}, {match_no:no,name1:n1,name2:n2,score1:a,score2:b,winner:a>b?m.t1:m.t2});
   if(m.tb){ row.is_tiebreaker=true; row.category=m.cat; row.team1=m.t1; row.team2=m.t2; }
   delete row.created_at;
-  try{ await schedSave(row); SCHED_RESULTS[no]=Object.assign({season:SCHED_LOADED_YEAR},row); renderAdminSchedule(true); toast('Match '+(m.tb?'(tiebreaker) ':no+' ')+'submitted — '+row.winner+' wins','success'); }
+  try{ await schedSave(row); SCHED_RESULTS[no]=Object.assign({season:SCHED_LOADED_YEAR},row); renderAdminSchedule(true); toast((m.tb?'Tiebreaker':'Match '+schedDispNo(no))+' submitted — '+row.winner+' wins','success'); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
 async function schedReopen(no){
-  const m = schedAllMatches().find(x=>x.no===no); if(!m||!m.res) return;
+  const m = schedMatches(schedDivOf(no)).find(x=>x.no===no); if(!m||!m.res) return;
   if(!confirm('Reopen this match to edit its score?')) return;
   const row = Object.assign({}, m.res, {winner:null}); delete row.created_at;
   try{ await schedSave(row); SCHED_RESULTS[no]=row; renderAdminSchedule(true); }
   catch(e){ toast('Error: '+e.message,'error'); }
 }
-async function schedAddTiebreakers(){
-  const s = schedStandings(); if(!s.needPairs.length) return;
-  let next = Math.max(42, ...Object.keys(SCHED_RESULTS).map(Number))+1;
+async function schedReset(no){
+  const m = schedMatches(schedDivOf(no)).find(x=>x.no===no); if(!m) return;
+  if(!confirm('Clear this match result? Scores, player names and winner will be removed.')) return;
+  const row = Object.assign({}, m.res||{}, {match_no:no,name1:'',name2:'',score1:null,score2:null,winner:null});
+  if(m.tb){ row.is_tiebreaker=true; row.category=m.cat; row.team1=m.t1; row.team2=m.t2; }
+  delete row.created_at;
+  try{ await schedSave(row); SCHED_RESULTS[no]=Object.assign({season:SCHED_LOADED_YEAR},row); renderAdminSchedule(true); toast('Match result cleared','success'); }
+  catch(e){ toast('Error: '+e.message,'error'); }
+}
+async function schedRemoveTb(no){
+  const m = schedMatches(schedDivOf(no)).find(x=>x.no===no); if(!m||!m.tb||schedDone(m)) return;
+  if(!confirm('Remove this tiebreaker match?')) return;
+  try{ await sbDelete('fixtures',`season=eq.${SCHED_LOADED_YEAR}&match_no=eq.${no}`,true); delete SCHED_RESULTS[no]; renderAdminSchedule(true); toast('Tiebreaker match removed','success'); }
+  catch(e){ toast('Error: '+e.message,'error'); }
+}
+async function schedGenerateTb(div){
+  const s = schedStandings(div); if(!s.canGenerate) return;
+  const cat = div==='womens' ? (document.getElementById('sch-tbcat-womens')||{}).value : TB_CATS[div][0];
+  if(!cat){ toast('Choose the category nominated by the captains','error'); return; }
+  const pairs=[];
+  s.tieGroups.forEach(g=>{ const t=g.slice().sort(); for(let i=0;i<t.length;i++) for(let j=i+1;j<t.length;j++) pairs.push([t[i],t[j]]); });
+  const base = div==='mens'?0:(div==='womens'?1000:2000);
+  let next = Math.max(base+(DIV_FIXTURES[div]||[]).length, ...Object.keys(SCHED_RESULTS).map(Number).filter(n=>schedDivOf(n)===div))+1;
   try{
-    for(const p of s.needPairs){
-      const row = {match_no:next,is_tiebreaker:true,category:'Advanced + Foreign Advanced',team1:p[0],team2:p[1],name1:'',name2:'',winner:null};
+    for(const p of pairs){
+      const row = {match_no:next,is_tiebreaker:true,category:cat,team1:p[0],team2:p[1],name1:schedPlayers(div,p[0],cat),name2:schedPlayers(div,p[1],cat),winner:null};
       await schedSave(row); SCHED_RESULTS[next]=Object.assign({season:SCHED_LOADED_YEAR},row); next++;
     }
-    renderAdminSchedule(true); toast('Tiebreaker match added to Fixtures','success');
+    renderAdminSchedule(true);
+    toast(`Tiebreaker match${pairs.length>1?'es':''} added to ${schedDivLabel(div)} Matches`,'success');
   } catch(e){ toast('Error: '+e.message,'error'); }
 }
 async function renderSchedulePane(){
