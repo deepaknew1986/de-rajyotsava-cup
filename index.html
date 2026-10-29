@@ -379,6 +379,11 @@ tr:hover td{background:rgba(200,150,0,0.1);}
 .sch-tbbox{margin-top:12px;font-size:12px;}
 .sch-tied{color:#ffb4a8;margin-bottom:8px;font-weight:600;}.sch-ok{color:var(--green);margin-bottom:8px;}.sch-mut{color:var(--muted);margin-bottom:8px;}
 .btn-sm.sch-off,.btn-sm:disabled{opacity:.45;cursor:not-allowed;}
+.sch-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;display:flex;align-items:center;justify-content:center;padding:14px;}
+.sch-modal{background:#241a0c;border:1px solid var(--gold);border-radius:10px;padding:18px;width:100%;max-width:760px;max-height:90vh;overflow:auto;font-size:13px;}
+.sch-modal h3{margin:0 0 10px;color:var(--gold);font-size:14px;letter-spacing:1px;}
+.sch-file{border:1px dashed var(--gold);border-radius:8px;padding:10px 12px;margin:8px 0;background:rgba(255,216,77,.05);word-break:break-all;}
+.sch-ok2{color:var(--green);}.sch-warn{color:#ffb86b;}.sch-bad{color:#ff8a8a;}
 .auc-tab{padding:10px 20px;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:11px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;font-weight:500;}
 .auc-tab.active{color:var(--gold);border-bottom-color:var(--gold);}
 .auc-tab:hover:not(.active){color:var(--text);}
@@ -1717,7 +1722,7 @@ async function renderAdminSchedule(noReload){
     const ok = await loadSchedResults(ACTIVE_SEASON);
     if(!ok){ el.innerHTML='<div class="empty" style="padding:2rem 1rem;">Fixtures table not set up yet — run fixtures_table.sql in Supabase.</div>'; return; }
   }
-  let html = `<div class="auc-tab-bar" style="margin-bottom:12px;"><button class="auc-tab ${ADM_SCHED_TAB==='matches'?'active':''}" onclick="setAdmSchedTab('matches')">Matches</button><button class="auc-tab ${ADM_SCHED_TAB==='points'?'active':''}" onclick="setAdmSchedTab('points')">Points</button></div>`;
+  let html = `<div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:10px;"><input type="file" id="sch-import-file" accept=".xlsx" style="display:none" onchange="schedImportFile(this)"/><button class="btn-sm" onclick="document.getElementById('sch-import-file').click()">&#11014; Import from Excel</button><button class="btn-sm success" onclick="schedExportResults()">&#11015; Download results (Excel)</button></div><div class="auc-tab-bar" style="margin-bottom:12px;"><button class="auc-tab ${ADM_SCHED_TAB==='matches'?'active':''}" onclick="setAdmSchedTab('matches')">Matches</button><button class="auc-tab ${ADM_SCHED_TAB==='points'?'active':''}" onclick="setAdmSchedTab('points')">Points</button></div>`;
   if(ADM_SCHED_TAB==='points'){
     html += schedPointsHtml(true);
   } else {
@@ -1786,6 +1791,153 @@ async function schedGenerateTb(div){
     renderAdminSchedule(true);
     toast(`Tiebreaker match${pairs.length>1?'es':''} added to ${schedDivLabel(div)} Matches`,'success');
   } catch(e){ toast('Error: '+e.message,'error'); }
+}
+
+/* ── Excel import / export (Schedule) ── */
+const EXCELJS_URL='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+const SCHED_XL={mens:"Men's Matches",womens:"Women's Matches",kids:'Kids Matches'};
+let SCHED_IMPORT_PLAN=null;
+function loadExcelJS(){
+  return new Promise((res,rej)=>{
+    if(window.ExcelJS) return res(window.ExcelJS);
+    const sc=document.createElement('script'); sc.src=EXCELJS_URL;
+    sc.onload=()=>window.ExcelJS?res(window.ExcelJS):rej(new Error('Excel library failed to load'));
+    sc.onerror=()=>rej(new Error('Could not load the Excel library — check your internet connection'));
+    document.head.appendChild(sc);
+  });
+}
+function xlVal(c){
+  let v=c?c.value:null;
+  if(v&&typeof v==='object'){ if('result' in v) v=v.result; else if(v.richText) v=v.richText.map(t=>t.text).join(''); else if(v instanceof Date) v=null; else v=null; }
+  return v===undefined?null:v;
+}
+function schedCloseModal(){ const o=document.getElementById('sch-ov'); if(o) o.remove(); SCHED_IMPORT_PLAN=null; }
+function schedShowModal(html){
+  let o=document.getElementById('sch-ov');
+  if(!o){ o=document.createElement('div'); o.id='sch-ov'; o.className='sch-ov'; document.body.appendChild(o); }
+  o.innerHTML=`<div class="sch-modal">${html}</div>`;
+}
+async function schedImportFile(input){
+  const file=input.files&&input.files[0]; input.value='';
+  if(!file) return;
+  if(!/\.xlsx$/i.test(file.name)){ toast('Please choose an .xlsx file','error'); return; }
+  try{
+    schedShowModal('<h3>IMPORT FROM EXCEL</h3><div class="sch-file">Reading '+schEsc(file.name)+'…</div>');
+    const [X,buf]=await Promise.all([loadExcelJS(), file.arrayBuffer()]);
+    const wb=new X.Workbook(); await wb.xlsx.load(buf);
+    const okLoad=await loadSchedResults(ACTIVE_SEASON);   // fresh copy so nothing already in the app is overwritten
+    if(!okLoad) throw new Error('Fixtures table not set up yet');
+    const plan={file:file.name,divs:{},rows:[],errors:[],names:0};
+    for(const d of SCHED_DIVS){
+      const div=d[0], ws=wb.getWorksheet(SCHED_XL[div]);
+      const fx=DIV_FIXTURES[div];
+      if(!ws){ plan.errors.push('Sheet "'+SCHED_XL[div]+'" not found'); continue; }
+      if(String(xlVal(ws.getCell('A4'))).trim()!=='Match'||String(xlVal(ws.getCell('F4'))).trim()!=='Score'){ plan.errors.push('Sheet "'+SCHED_XL[div]+'" does not have the expected columns'); continue; }
+      const sum={withScores:0,imp:0,skip:0,prob:0}; plan.divs[div]=sum;
+      for(let i=0;i<fx.length;i++){
+        const f=fx[i], r=5+i;
+        const n=xlVal(ws.getCell(r,1)), cat=xlVal(ws.getCell(r,2)), t1=xlVal(ws.getCell(r,4)), t2=xlVal(ws.getCell(r,9));
+        if(Number(n)!==i+1 || String(cat).trim()!==f[1] || String(t1).trim()!==f[2] || String(t2).trim()!==f[3]){
+          plan.errors.push(`${schedDivLabel(div)} row ${r}: does not match the app's Match ${i+1} (${f[2]} vs ${f[3]}, ${f[1]})`); break;
+        }
+        const raw1=xlVal(ws.getCell(r,6)), raw2=xlVal(ws.getCell(r,8));
+        const blank=v=>v===null||v===''||v===undefined;
+        if(blank(raw1)&&blank(raw2)) continue;
+        sum.withScores++;
+        const label=`${schedDivLabel(div)} Match ${i+1}`;
+        const a=Number(raw1), b=Number(raw2);
+        let problem=null;
+        if(blank(raw1)||blank(raw2)) problem='only one score entered';
+        else if(!Number.isInteger(a)||!Number.isInteger(b)||a<0||b<0) problem='scores must be whole numbers 0 or more';
+        else if(a===b) problem=`scores equal (${a}–${b})`;
+        if(problem){ sum.prob++; plan.rows.push({label,status:'problem',reason:problem}); continue; }
+        const ex=SCHED_RESULTS[f[0]];
+        if(ex && ex.winner){ sum.skip++; plan.rows.push({label,status:'skip'}); continue; }
+        const n1=String(xlVal(ws.getCell(r,5))||'').trim(), n2=String(xlVal(ws.getCell(r,10))||'').trim();
+        const d1=schedPlayers(div,f[2],f[1]), d2=schedPlayers(div,f[3],f[1]);
+        if((n1&&n1!==d1)||(n2&&n2!==d2)) plan.names++;
+        sum.imp++;
+        plan.rows.push({label,status:'import',row:{season:SCHED_LOADED_YEAR,match_no:f[0],name1:n1||d1,name2:n2||d2,score1:a,score2:b,winner:a>b?f[2]:f[3]}});
+      }
+    }
+    SCHED_IMPORT_PLAN=plan; schedRenderPreview();
+  }catch(e){ schedShowModal(`<h3>IMPORT FROM EXCEL</h3><div class="sch-file" style="color:#ff8a8a;">${schEsc(e.message)}</div><div style="text-align:right"><button class="btn-sm" onclick="schedCloseModal()">Close</button></div>`); }
+}
+function schedRenderPreview(){
+  const p=SCHED_IMPORT_PLAN; if(!p) return;
+  const total=p.rows.filter(r=>r.status==='import').length;
+  if(p.errors.length){
+    schedShowModal(`<h3>IMPORT FROM EXCEL</h3><div class="sch-file"><b>${schEsc(p.file)}</b> — <span class="sch-bad">not recognised as the scoresheet template</span></div><div style="font-size:12px;line-height:1.7;margin:10px 0;">${p.errors.slice(0,6).map(schEsc).join('<br>')}</div><div style="font-size:12px;color:var(--muted);">Use DE_Rajyotsava_Cup_Scoresheet.xlsx without changing its sheet names, columns, teams or match order. Nothing was imported.</div><div style="text-align:right;margin-top:12px;"><button class="btn-sm" onclick="schedCloseModal()">Close</button></div>`);
+    return;
+  }
+  const rowsH=SCHED_DIVS.map(d=>{const s=p.divs[d[0]]||{withScores:0,imp:0,skip:0,prob:0};return `<tr><td style="text-align:left;font-weight:700;">${d[1]}</td><td>${s.withScores}</td><td class="sch-ok2">${s.imp}</td><td class="sch-warn">${s.skip}</td><td class="sch-bad">${s.prob}</td></tr>`}).join('');
+  const skipped=p.rows.filter(r=>r.status==='skip').map(r=>r.label), probs=p.rows.filter(r=>r.status==='problem');
+  let det='';
+  if(skipped.length) det+=`<div><span class="sch-warn">Skipped:</span> ${skipped.slice(0,12).map(schEsc).join(', ')}${skipped.length>12?' … +'+(skipped.length-12)+' more':''} — already submitted in the app (kept as is)</div>`;
+  if(probs.length) det+=probs.slice(0,8).map(r=>`<div><span class="sch-bad">Problem:</span> ${schEsc(r.label)} — ${schEsc(r.reason)}, not imported</div>`).join('')+(probs.length>8?`<div class="sch-bad">… +${probs.length-8} more</div>`:'');
+  if(p.names) det+=`<div><span class="sch-ok2">Names:</span> ${p.names} match${p.names>1?'es have':' has'} a changed player name — brought over</div>`;
+  if(!det) det='<div style="color:var(--muted)">No scores found in the file.</div>';
+  schedShowModal(`<h3>IMPORT PREVIEW — Season ${schEsc(SCHED_LOADED_YEAR)}</h3><div class="sch-file"><b>${schEsc(p.file)}</b> &nbsp; <span class="sch-ok2">&#10003; Template recognised</span></div><table class="sch-table"><thead><tr><th>Division</th><th>Rows with scores</th><th>Will import</th><th>Skipped (already in app)</th><th>Problems</th></tr></thead><tbody>${rowsH}</tbody></table><div style="font-size:12px;line-height:1.7;">${det}</div><div style="text-align:right;margin-top:14px;"><button class="btn-sm" onclick="schedCloseModal()">Cancel</button> <button class="btn-sm" id="sch-confirm-import" style="border-color:var(--green);color:var(--green);" ${total?'':'disabled'} onclick="schedConfirmImport()">Confirm import (${total} match${total===1?'':'es'})</button></div>`);
+}
+async function schedConfirmImport(){
+  const p=SCHED_IMPORT_PLAN; if(!p) return;
+  const rows=p.rows.filter(r=>r.status==='import').map(r=>r.row);
+  if(!rows.length){ schedCloseModal(); return; }
+  const btn=document.getElementById('sch-confirm-import'); if(btn){ btn.disabled=true; btn.textContent='Importing…'; }
+  try{
+    for(let i=0;i<rows.length;i+=50) await sbUpsert('fixtures', rows.slice(i,i+50), true);
+    rows.forEach(r=>{ SCHED_RESULTS[r.match_no]=Object.assign({},SCHED_RESULTS[r.match_no]||{},r); });
+    const skipped=p.rows.filter(r=>r.status==='skip').length, probs=p.rows.filter(r=>r.status==='problem').length;
+    schedCloseModal(); renderAdminSchedule(true);
+    toast(`Imported ${rows.length} match${rows.length===1?'':'es'} · ${skipped} skipped · ${probs} problem${probs===1?'':'s'} — standings updated`,'success');
+  }catch(e){ schedCloseModal(); toast('Import failed: '+e.message,'error'); }
+}
+async function schedExportResults(){
+  try{
+    toast('Preparing results file…');
+    const [X,ok]=await Promise.all([loadExcelJS(), loadSchedResults(ACTIVE_SEASON)]);
+    if(!ok) throw new Error('Fixtures table not set up yet');
+    const wb=new X.Workbook();
+    const thin={style:'thin',color:{argb:'FFBFBFBF'}}, bd={top:thin,left:thin,bottom:thin,right:thin};
+    const TF={Chalukya:'FFDDEBF7',Hoysala:'FFFFF2CC',Rashtrakuta:'FFE2EFDA'};
+    const hdr=(row,fill)=>{ row.eachCell(c=>{ c.font={name:'Arial',bold:true,color:{argb:'FFFFFFFF'}}; c.fill={type:'pattern',pattern:'solid',fgColor:{argb:fill||'FF1F3864'}}; c.alignment={horizontal:'center',vertical:'middle',wrapText:true}; c.border=bd; }); row.height=24; };
+    for(const d of SCHED_DIVS){
+      const div=d[0], ws=wb.addWorksheet(d[1]+' Results');
+      ws.mergeCells('A1:L1'); ws.getCell('A1').value=`DE RAJYOTSAVA CUP ${SCHED_LOADED_YEAR} — ${d[1].toUpperCase()} RESULTS`;
+      ws.getCell('A1').font={name:'Arial',bold:true,size:14,color:{argb:'FFFFFFFF'}}; ws.getCell('A1').fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}}; ws.getCell('A1').alignment={horizontal:'center',vertical:'middle'}; ws.getRow(1).height=30;
+      ws.addRow([]);
+      hdr(ws.addRow(['Match','Category','Pts','Team 1','Team 1 Players','Score','Score','Team 2','Team 2 Players','Winner','Team 1 Pts','Team 2 Pts']));
+      schedMatches(div).forEach(m=>{
+        const r=m.res||{}, done=schedDone(m);
+        const n1=(r.name1!=null&&r.name1!=='')?r.name1:schedPlayers(div,m.t1,m.cat), n2=(r.name2!=null&&r.name2!=='')?r.name2:schedPlayers(div,m.t2,m.cat);
+        const row=ws.addRow([m.tb?'Tiebreaker':schedDispNo(m.no),m.cat,m.pts,m.t1,n1,done?r.score1:null,done?r.score2:null,m.t2,n2,done?r.winner:'',done?(r.winner===m.t1?m.pts:0):null,done?(r.winner===m.t2?m.pts:0):null]);
+        row.eachCell((c,i)=>{ c.font={name:'Arial',size:10}; c.border=bd; c.alignment={vertical:'middle',horizontal:[1,2,3,6,7,10,11,12].includes(i)?'center':'left',wrapText:true}; });
+        [[4,m.t1],[8,m.t2]].forEach(([i,t])=>{ row.getCell(i).fill={type:'pattern',pattern:'solid',fgColor:{argb:TF[t]||'FFFFFFFF'}}; row.getCell(i).font={name:'Arial',size:10,bold:true}; });
+        if(done){ row.getCell(10).font={name:'Arial',size:10,bold:true,color:{argb:'FF375623'}}; }
+      });
+      [10,13,6,14,32,8,8,14,32,14,11,11].forEach((w,i)=>{ ws.getColumn(i+1).width=w; });
+      ws.views=[{state:'frozen',ySplit:3}];
+      ws.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
+    }
+    const ps=wb.addWorksheet('Points');
+    ps.mergeCells('A1:F1'); ps.getCell('A1').value=`POINTS — SEASON ${SCHED_LOADED_YEAR}`; ps.getCell('A1').font={name:'Arial',bold:true,size:14,color:{argb:'FFFFFFFF'}}; ps.getCell('A1').fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}}; ps.getCell('A1').alignment={horizontal:'center'}; ps.getRow(1).height=30;
+    ps.addRow([]);
+    for(const d of SCHED_DIVS){
+      const st=schedStandings(d[0]);
+      const t=ps.addRow([d[1]]); t.getCell(1).font={name:'Arial',bold:true,size:12,color:{argb:'FFC9A227'}};
+      hdr(ps.addRow(['Rank','Team','Points','Played','Remaining','Status']));
+      st.rows.forEach((r,i)=>{ const row=ps.addRow([i+1,r.team,r.points,r.played,r.remaining,i===0&&st.canGenerate?'Tied – tiebreaker needed':'']); row.eachCell((c,k)=>{ c.font={name:'Arial',size:11,bold:k<=3}; c.border=bd; c.alignment={horizontal:k===2||k===6?'left':'center'}; }); row.getCell(2).fill={type:'pattern',pattern:'solid',fgColor:{argb:TF[r.team]}}; });
+      ps.addRow([]);
+    }
+    [8,18,10,10,12,30].forEach((w,i)=>{ ps.getColumn(i+1).width=w; });
+    const buf=await wb.xlsx.writeBuffer();
+    const dt=new Date(), ymd=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+    const name=`DE_Rajyotsava_Cup_Results_${ymd}.xlsx`;
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500);
+    toast(name+' downloaded','success');
+  }catch(e){ toast('Export failed: '+e.message,'error'); }
 }
 async function renderSchedulePane(){
   if(SCHED_SUBTAB==='fixtures') renderFixturesPane();
